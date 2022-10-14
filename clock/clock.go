@@ -7,16 +7,24 @@
 package clock
 
 import (
+	"container/heap"
 	"sync"
 	"time"
 )
 
 // Clock is the top level interface that encapsulates the time package functionality.
 type Clock interface {
+	After(time.Duration) <-chan time.Time
+	NewTimer(d time.Duration) *Timer
 	Now() time.Time
 	Since(time.Time) time.Duration
 	Sleep(time.Duration)
 	Until(time.Time) time.Duration
+}
+
+// Timer is an equivalent of time.Timer with a reduced API.
+type Timer struct {
+	C <-chan time.Time
 }
 
 type realClock struct{}
@@ -24,17 +32,20 @@ type realClock struct{}
 // Real is a Clock whose methods call the functions of the time package with the same name.
 var Real = Clock(realClock{})
 
-func (realClock) Now() time.Time                  { return time.Now() }    // Now wraps time.Now.
-func (realClock) Since(t time.Time) time.Duration { return time.Since(t) } // Since wraps time.Since.
-func (realClock) Sleep(d time.Duration)           { time.Sleep(d) }        // Sleep wraps time.Sleep.
-func (realClock) Until(t time.Time) time.Duration { return time.Until(t) } // Until wraps time.Until.
+func (realClock) After(d time.Duration) <-chan time.Time { return time.After(d) }                 // After wraps time.After.
+func (realClock) NewTimer(d time.Duration) *Timer        { return &Timer{C: time.NewTimer(d).C} } // NewTimer wraps time.NewTimer.
+func (realClock) Now() time.Time                         { return time.Now() }                    // Now wraps time.Now.
+func (realClock) Since(t time.Time) time.Duration        { return time.Since(t) }                 // Since wraps time.Since.
+func (realClock) Sleep(d time.Duration)                  { time.Sleep(d) }                        // Sleep wraps time.Sleep.
+func (realClock) Until(t time.Time) time.Duration        { return time.Until(t) }                 // Until wraps time.Until.
 
 // Controller is a Clock implementation that gives you control over time!
 type Controller struct {
 	Opts ControllerOpts
 
-	mu  sync.RWMutex // PROTECTS EVERYTHING BELOW
-	now time.Time
+	mu       sync.RWMutex // PROTECTS EVERYTHING BELOW
+	watchers watcherHeap
+	now      time.Time
 }
 
 // ControllerOpts are options for Controller configuration.
@@ -57,6 +68,24 @@ func NewController(options *ControllerOpts) *Controller {
 	return c
 }
 
+// After is equivalent to NewTimer(d).C.
+func (c *Controller) After(d time.Duration) <-chan time.Time { return c.NewTimer(d).C }
+
+// NewTimer creates a new Timer that will send the current simulated time on its channel after it becomes >= c.Now().Add(d).
+func (c *Controller) NewTimer(d time.Duration) *Timer {
+	if d <= 0 {
+		ch := make(chan time.Time, 1)
+		ch <- c.Now()
+		return &Timer{C: ch}
+	}
+	watcher := watcher{C: make(chan time.Time, 1)}
+	c.mu.Lock()
+	watcher.Threshold = c.now.Add(d)
+	c.watchers.Push(watcher)
+	c.mu.Unlock()
+	return &Timer{C: watcher.C}
+}
+
 // Now returns the simulated current time.
 func (c *Controller) Now() time.Time {
 	c.mu.RLock()
@@ -72,6 +101,14 @@ func (c *Controller) Sleep(d time.Duration) {
 		c.mu.Lock()
 		defer c.mu.Unlock()
 		c.now = c.now.Add(d)
+		for len(c.watchers) > 0 {
+			w := c.watchers.First()
+			if w.Threshold.After(c.now) {
+				return
+			}
+			w.C <- w.Threshold
+			heap.Pop(&c.watchers)
+		}
 	}
 }
 
