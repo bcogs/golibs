@@ -21,9 +21,10 @@ import (
 
 // Singleton is a singleton that can be used concurrently.
 // It mustn't be copied after being used.
-type Singleton struct {
+type Singleton[T any] struct {
 	mu       sync.RWMutex
-	instance interface{}
+	created  bool
+	instance T
 }
 
 // GetOrCreate returns the singleton as an interface{}.
@@ -31,27 +32,28 @@ type Singleton struct {
 // The creation function will be called only once for a given Singleton
 // instance, and all calls to GetOrCreate for that Singleton will return
 // whatever that unique call to the creation function returned.
-func (s *Singleton) GetOrCreate(create func() interface{}) interface{} {
+func (s *Singleton[T]) GetOrCreate(create func() T) T {
 	s.mu.RLock()
-	result := s.instance
-	s.mu.RUnlock()
-	if result == nil {
-		s.mu.Lock()
-		result = s.instance
-		if result == nil { // we need to test again, it might have been set in the mean time
-			result = create()
-			s.instance = result
-		}
-		s.mu.Unlock()
+	if s.created {
+		defer s.mu.RUnlock()
+		return s.instance
 	}
+	s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.created { // we need to test again, it might have been set in the mean time
+		return s.instance
+	}
+	result := create()
+	s.instance, s.created = result, true
 	return result
 }
 
 // SingletonMap is a map of singletons that can be used concurrently.
 // It mustn't be copied after being used.
-type SingletonMap struct {
+type SingletonMap[K comparable, V any] struct {
 	mu        sync.RWMutex
-	instances map[interface{}]interface{}
+	instances map[K]V
 }
 
 // GetOrCreate returns the singleton for a key as an interface{}.
@@ -61,17 +63,17 @@ type SingletonMap struct {
 // SingletonMap and key will return whatever that unique call to the creation
 // function returned.
 // The creation function receives in argument the same key passed to GetOrCreate.
-func (sm *SingletonMap) GetOrCreate(key interface{}, create func(key interface{}) interface{}) interface{} {
+func (sm *SingletonMap[K, V]) GetOrCreate(key K, create func(key K) V) V {
 	sm.mu.Lock()
-	result := sm.instances[key]
+	result, ok := sm.instances[key]
 	sm.mu.Unlock()
-	if result == nil {
+	if !ok {
 		sm.mu.Lock()
-		result = sm.instances[key]
-		if result == nil { // we need to test again, it might have been set in the mean time
+		result, ok = sm.instances[key]
+		if !ok { // we need to test again, it might have been set in the mean time
 			result = create(key)
 			if sm.instances == nil {
-				sm.instances = make(map[interface{}]interface{})
+				sm.instances = make(map[K]V)
 			}
 			sm.instances[key] = result
 		}

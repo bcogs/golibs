@@ -1,6 +1,7 @@
 package singleton_test
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 
@@ -16,16 +17,15 @@ type createlog struct{ created chan int }
 func newCreatelog(size int) *createlog { return &createlog{created: make(chan int, size)} }
 
 // create is meant to be passed in argument to Singleton.GetOrCreate
-func (c *createlog) create() interface{} {
+func (c *createlog) create() int {
 	c.created <- -1
 	return -1
 }
 
 // createWithKey is meant to be passed in argument to SingletonMap.GetOrCreate
-func (c *createlog) createWithKey(key interface{}) interface{} {
-	keyString := key.(int)
-	c.created <- keyString
-	return keyString
+func (c *createlog) createWithKey(key int) string {
+	c.created <- key
+	return strconv.Itoa(key)
 }
 
 // all returns the log of calls to create / createWithKey:
@@ -45,17 +45,17 @@ func (c *createlog) all() []int {
 
 func TestSingletonBasics(t *testing.T) {
 	t.Parallel()
-	var s singleton.Singleton
+	var s singleton.Singleton[int]
 	createlog := newCreatelog(100)
-	assert.Equal(t, -1, s.GetOrCreate(createlog.create).(int))
-	assert.Equal(t, -1, s.GetOrCreate(createlog.create).(int))
-	assert.Equal(t, -1, s.GetOrCreate(createlog.create).(int))
+	assert.Equal(t, -1, s.GetOrCreate(createlog.create))
+	assert.Equal(t, -1, s.GetOrCreate(createlog.create))
+	assert.Equal(t, -1, s.GetOrCreate(createlog.create))
 	assert.Equal(t, createlog.all(), []int{-1})
 }
 
 func TestSingletonRaces(t *testing.T) {
 	t.Parallel()
-	var s singleton.Singleton
+	var s singleton.Singleton[int]
 	const P = 100
 	const Q = 100
 	createlog := newCreatelog(P * Q * 2)
@@ -66,7 +66,7 @@ func TestSingletonRaces(t *testing.T) {
 		for j := 0; j < Q; j++ {
 			go func(i int) {
 				<-leash
-				assert.Equal(t, -1, s.GetOrCreate(createlog.create).(int))
+				assert.Equal(t, -1, s.GetOrCreate(createlog.create))
 				wg.Done()
 			}(i)
 		}
@@ -78,17 +78,17 @@ func TestSingletonRaces(t *testing.T) {
 
 func TestSingletonMapBasics(t *testing.T) {
 	t.Parallel()
-	var sm singleton.SingletonMap
+	var sm singleton.SingletonMap[int, string]
 	createlog := newCreatelog(100)
-	assert.Equal(t, 1, sm.GetOrCreate(1, createlog.createWithKey).(int))
-	assert.Equal(t, 2, sm.GetOrCreate(2, createlog.createWithKey).(int))
-	assert.Equal(t, 1, sm.GetOrCreate(1, createlog.createWithKey).(int))
+	assert.Equal(t, "1", sm.GetOrCreate(1, createlog.createWithKey))
+	assert.Equal(t, "2", sm.GetOrCreate(2, createlog.createWithKey))
+	assert.Equal(t, "1", sm.GetOrCreate(1, createlog.createWithKey))
 	assert.Equal(t, createlog.all(), []int{1, 2})
 }
 
 func TestSingletonMapRaces(t *testing.T) {
 	t.Parallel()
-	var sm singleton.SingletonMap
+	var sm singleton.SingletonMap[int, string]
 	const P = 100
 	const Q = 100
 	createlog := newCreatelog(P * Q * 2)
@@ -101,7 +101,7 @@ func TestSingletonMapRaces(t *testing.T) {
 		for j := 0; j < Q; j++ {
 			go func(i int) {
 				<-leash
-				assert.Equal(t, i, sm.GetOrCreate(i, createlog.createWithKey).(int))
+				assert.Equal(t, strconv.Itoa(i), sm.GetOrCreate(i, createlog.createWithKey))
 				wg.Done()
 			}(i)
 		}
