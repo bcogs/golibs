@@ -81,3 +81,27 @@ func (sm *SingletonMap[K, V]) GetOrCreate(key K, create func(key K) V) V {
 	}
 	return result
 }
+
+// GetOrCreateOrFail is the same as GetOrCreate but allows the creation to fail.
+func (sm *SingletonMap[K, V]) GetOrCreateOrFail(key K, create func(key K) (V, error)) (V, error) {
+	sm.mu.Lock()
+	result, ok := sm.instances[key]
+	sm.mu.Unlock()
+	if !ok {
+		var err error
+		sm.mu.Lock()
+		defer sm.mu.Unlock()
+		result, ok = sm.instances[key]
+		if !ok { // we need to test again, it might have been set in the mean time
+			result, err = create(key)
+			if err != nil {
+				return result, err
+			}
+			if sm.instances == nil {
+				sm.instances = make(map[K]V)
+			}
+			sm.instances[key] = result
+		}
+	}
+	return result, nil
+}
