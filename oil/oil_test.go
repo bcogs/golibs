@@ -32,6 +32,50 @@ func TestMin(t *testing.T) {
 	assert.Equal(t, "bar", oil.Min("bar", "foo"))
 }
 
+func TestAtoi(t *testing.T) {
+	for _, tc := range []struct {
+		a                  string
+		min, max, expected int
+	}{
+		{"10", 0, 100, 10},
+		{"10", 0, 10, 10},
+		{"5", 5, 10, 5},
+		{"-5", -10, 10, -5},
+		{"11", 0, 10, -42},
+		{"-1", 0, 10, -42},
+	} {
+		k, err := oil.Atoi(tc.a, "foo", tc.min, tc.max)
+		if tc.expected == -42 {
+			assert.ErrorContainsf(t, err, "invalid foo", "%+v", tc)
+		} else {
+			assert.NoErrorf(t, err, "%+v", tc)
+			assert.Equalf(t, tc.expected, k, "%+v", tc)
+		}
+	}
+}
+
+func TestAtou(t *testing.T) {
+	for _, tc := range []struct {
+		a        string
+		min, max uint
+		expected int
+	}{
+		{"10", 0, 100, 10},
+		{"10", 0, 10, 10},
+		{"5", 5, 10, 5},
+		{"11", 0, 10, -42},
+		{"3", 4, 10, -42},
+	} {
+		k, err := oil.Atou(tc.a, "foo", tc.min, tc.max)
+		if tc.expected == -42 {
+			assert.ErrorContainsf(t, err, "invalid foo", "%+v", tc)
+		} else {
+			assert.NoErrorf(t, err, "%+v", tc)
+			assert.Equalf(t, uint(tc.expected), k, "%+v", tc)
+		}
+	}
+}
+
 func TestPair(t *testing.T) {
 	assert.Equal(t, oil.Pair[int, string]{First: 1, Second: "a"}, oil.NewPair(1, "a"))
 }

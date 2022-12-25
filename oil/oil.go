@@ -5,6 +5,9 @@
 package oil
 
 import (
+	"fmt"
+	"strconv"
+
 	"golang.org/x/exp/constraints"
 )
 
@@ -49,6 +52,38 @@ func Min[T constraints.Ordered](a, b T) T {
 		return a
 	}
 	return b
+}
+
+// Atoi parses an integer value, verifies that it's between min and max, and if
+// there's a parse error or it's out of bounds, returns an error message that
+// looks like: invalid $whatIsIt blah blah
+func Atoi[T constraints.Signed](s, whatIsIt string, min T, max T) (T, error) {
+	k, err := strconv.ParseInt(s, 0, 64)
+	switch {
+	case err != nil:
+		return 0, fmt.Errorf("invalid %s %q - it should be an integer", whatIsIt, s)
+	case T(k) < min:
+		return T(k), fmt.Errorf("invalid %s %s - it should be at least %d", whatIsIt, s, min)
+	case T(k) > max:
+		return T(k), fmt.Errorf("invalid %s %s - it should be at most %d", whatIsIt, s, max)
+	}
+	return T(k), nil
+}
+
+// Atou parses an unsigned integer value, verifies that it's between min and
+// max, and if there's a parse error or it's out of bounds, returns an error
+// message that looks like: invalid $whatIsIt blah blah
+func Atou[T constraints.Unsigned](s, whatIsIt string, min T, max T) (T, error) {
+	k, err := strconv.ParseUint(s, 0, 64)
+	switch {
+	case err != nil:
+		return 0, fmt.Errorf("invalid %s %q - it should be an integer", whatIsIt, s)
+	case T(k) < min:
+		return T(k), fmt.Errorf("invalid %s %s - it should be at least %d", whatIsIt, s, min)
+	case T(k) > max:
+		return T(k), fmt.Errorf("invalid %s %s - it should be at most %d", whatIsIt, s, max)
+	}
+	return T(k), nil
 }
 
 // Pair is a pair of values of arbitrary types.
