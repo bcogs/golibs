@@ -1,18 +1,15 @@
 // Package singleton implements singletons and maps of singletons.
 //
-// To create a singleton of type foo:
-// var myfoo singleton.Singleton
-// theOnlyFoo := myfoo.GetOrCreate(func() interface{} { return new(foo) }).(foo)
-// // have fun with theOnlyFoo
+// To create a singleton of type T:
+//   var myfoo singleton.Singleton[T]
+//   theOnlyFoo := myfoo.GetOrCreate(func() T { return T{} })
+//   // have fun with theOnlyFoo
 //
 // If you have rather a map of keys of type K to singletons of type V:
-// var mybars singleton.SingletonMap
-// key := some key of type K
-// val := mybars.GetOrCreate(key,
-//
-//	func(k interface{} /* it's a K */) interface{} { return new(bar) }).(bar)
-//
-// // have fun with val, it's the one bar for the key
+//   var mybars singleton.SingletonMap[K, V]
+//   key := some key of type K
+//   val := mybars.GetOrCreate(key, func(k K) V { return V{} })
+//   // have fun with val, it's the one V for the key
 package singleton
 
 import (
