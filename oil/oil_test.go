@@ -129,3 +129,7 @@ func TestMapGetOrNewRef(t *testing.T) {
 	assert.Equal(t, 2, *m[1])
 	assert.Equal(t, 0, *m[4])
 }
+
+func TestMapFromSlice(t *testing.T) {
+	assert.Equal(t, map[int]float64{1: 5, 3: 5}, oil.MapFromSlice([]int{1, 3}, 5.))
+}

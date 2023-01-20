@@ -194,3 +194,12 @@ func MapGetOrNewRef[K comparable, V any](m map[K]*V, key K) *V {
 	}
 	return v
 }
+
+// MapFromSlice creates a map whose keys are the elements of a slice, and values are all the same.
+func MapFromSlice[K comparable, V any](slice []K, value V) map[K]V {
+	m := make(map[K]V)
+	for _, k := range slice {
+		m[k] = value
+	}
+	return m
+}
