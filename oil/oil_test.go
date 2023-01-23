@@ -76,6 +76,26 @@ func TestAtou(t *testing.T) {
 	}
 }
 
+func TestFirst(t *testing.T) {
+	assert.Equal(t, 1, oil.First(1))
+	assert.Equal(t, "foo", oil.First("foo", "bar"))
+}
+
+func TestSecond(t *testing.T) {
+	assert.Equal(t, 2, oil.Second("foo", 2))
+	assert.Equal(t, "bar", oil.Second(1, "bar", "baz"))
+}
+
+func TestThird(t *testing.T) {
+	assert.Equal(t, 3, oil.Third("foo", "bar", 3))
+	assert.Equal(t, "bar", oil.Third(1, 2, "bar"))
+}
+
+func TestFourth(t *testing.T) {
+	assert.Equal(t, 4, oil.Fourth("foo", "bar", "baz", 4))
+	assert.Equal(t, "bar", oil.Fourth(1, 2, 3, "bar"))
+}
+
 func TestPair(t *testing.T) {
 	assert.Equal(t, oil.Pair[int, string]{First: 1, Second: "a"}, oil.NewPair(1, "a"))
 }

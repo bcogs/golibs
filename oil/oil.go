@@ -86,6 +86,18 @@ func Atou[T constraints.Unsigned](s, whatIsIt string, min T, max T) (T, error) {
 	return T(k), nil
 }
 
+// First returns its first argument.
+func First[T any](first T, _ ...any) T { return first }
+
+// Second returns its second argument.
+func Second[T any](_ any, second T, _ ...any) T { return second }
+
+// Third returns its third argument.
+func Third[T any](_, _ any, third T, _ ...any) T { return third }
+
+// Fourth returns its fourth argument.
+func Fourth[T any](_, _, _ any, fourth T, _ ...any) T { return fourth }
+
 // Pair is a pair of values of arbitrary types.
 type Pair[T1, T2 any] struct {
 	First  T1
