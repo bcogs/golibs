@@ -86,6 +86,10 @@ func Atou[T constraints.Unsigned](s, whatIsIt string, min T, max T) (T, error) {
 	return T(k), nil
 }
 
+// Ignore ignores all its arguments and does nothing.
+// It's convenient when a linter bugs you about ignoring an error that you really don't care about.
+func Ignore(...any) {}
+
 // First returns its first argument.
 func First[T any](first T, _ ...any) T { return first }
 
