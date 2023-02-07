@@ -223,6 +223,7 @@ func MapFromSlice[K comparable, V any](slice []K, value V) map[K]V {
 
 // FanIn writes anything it reads from a number of channels, the producers, to a single channel, the consumer.
 // If all the producers get closed, it closes the consumer and returns.
+// Whenever there's a write to a producer, the consumer must be read, otherwise, FanIn could get stuck.
 func FanIn[T any](consumer chan<- T, producers ...<-chan T) {
 	var wg sync.WaitGroup
 	wg.Add(len(producers))
@@ -240,6 +241,7 @@ func FanIn[T any](consumer chan<- T, producers ...<-chan T) {
 
 // FanOut replicates everything it reads from a channel, the producer, to an arbitrary number of channels, the consumers.
 // If the producer is closed, FanOut closes the consumers and returns.
+// Whenever there's a write to the producer, all consumers must be read, otherwise, FanOut coudl get stuck.
 func FanOut[T any](producer <-chan T, consumers ...chan<- T) {
 	for x := range producer {
 		for _, consumer := range consumers {
