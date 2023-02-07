@@ -7,6 +7,7 @@ package oil
 import (
 	"fmt"
 	"strconv"
+	"sync"
 
 	"golang.org/x/exp/constraints"
 )
@@ -218,4 +219,34 @@ func MapFromSlice[K comparable, V any](slice []K, value V) map[K]V {
 		m[k] = value
 	}
 	return m
+}
+
+// FanIn writes anything it reads from a number of channels, the producers, to a single channel, the consumer.
+// If all the producers get closed, it closes the consumer and returns.
+func FanIn[T any](consumer chan<- T, producers ...<-chan T) {
+	var wg sync.WaitGroup
+	wg.Add(len(producers))
+	for _, producer := range producers {
+		go func(producer <-chan T) {
+			defer wg.Done()
+			for x := range producer {
+				consumer <- x
+			}
+		}(producer)
+	}
+	wg.Wait()
+	close(consumer)
+}
+
+// FanOut replicates everything it reads from a channel, the producer, to an arbitrary number of channels, the consumers.
+// If the producer is closed, FanOut closes the consumers and returns.
+func FanOut[T any](producer <-chan T, consumers ...chan<- T) {
+	for x := range producer {
+		for _, consumer := range consumers {
+			consumer <- x
+		}
+	}
+	for _, consumer := range consumers {
+		close(consumer)
+	}
 }

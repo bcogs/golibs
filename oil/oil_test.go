@@ -153,3 +153,41 @@ func TestMapGetOrNewRef(t *testing.T) {
 func TestMapFromSlice(t *testing.T) {
 	assert.Equal(t, map[int]float64{1: 5, 3: 5}, oil.MapFromSlice([]int{1, 3}, 5.))
 }
+
+func TestFanIn(t *testing.T) {
+	const N = 50
+	consumer := make(chan int, N)
+	producer1, producer2 := make(chan int, 1), make(chan int, 1)
+	go oil.FanIn(consumer, producer1, producer2)
+	for i := 0; i < N; i++ {
+		go func(i int) { oil.If(i%5 > 5/2, producer1, producer2) <- i }(i)
+	}
+	m := make(map[int]bool)
+	for n := 0; n < N; n++ {
+		i := <-consumer
+		assert.GreaterOrEqual(t, i, 0)
+		assert.Less(t, i, N)
+		m[i] = true
+	}
+	assert.Equal(t, N, len(m))
+	close(producer1)
+	producer2 <- N
+	assert.Equal(t, N, <-consumer)
+	close(producer2)
+	_, ok := <-consumer
+	assert.False(t, ok)
+}
+
+func TestFanOut(t *testing.T) {
+	producer := make(chan int, 1)
+	consumer1, consumer2 := make(chan int, 1), make(chan int, 1)
+	go oil.FanOut(producer, consumer1, consumer2)
+	producer <- 1
+	assert.Equal(t, 1, <-consumer1)
+	assert.Equal(t, 1, <-consumer2)
+	close(producer)
+	_, ok := <-consumer1
+	assert.False(t, ok)
+	_, ok = <-consumer2
+	assert.False(t, ok)
+}
