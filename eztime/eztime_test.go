@@ -28,3 +28,18 @@ func TestMustFunctions(t *testing.T) {
 	assert.Equal(t, time.Hour+5*time.Minute, d)
 	assert.Panics(t, func() { MustParseDuration("invalid") })
 }
+
+func TestCancellableSleep(t *testing.T) {
+	t0 := time.Now()
+	CancellableSleep(-time.Hour, make(chan struct{}))
+	t1 := time.Now()
+	assert.Less(t, t1.Sub(t0), time.Second)
+	CancellableSleep(time.Second/10, make(chan struct{}))
+	t2 := time.Now()
+	assert.Less(t, t2.Sub(t1), time.Second)
+	assert.Greater(t, t2.Sub(t1), time.Second/20)
+	c := make(chan int, 1)
+	c <- 3
+	assert.Equal(t, 3, CancellableSleep(time.Hour, c))
+	assert.Less(t, time.Now().Sub(t2), time.Second)
+}

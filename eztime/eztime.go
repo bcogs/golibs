@@ -40,3 +40,20 @@ func MustParseDuration(s string) time.Duration {
 	}
 	return result
 }
+
+// CancellableSleep sleeps for a certain duration at least, or until a read from
+// a channel returns something.
+// Usually, the chan is a ctx.Done(), but it doesn't have to be.
+func CancellableSleep[T any](d time.Duration, c <-chan T) T {
+	var result T
+	if d < 0 {
+		return result
+	}
+	timer := time.NewTimer(d)
+	select {
+	case <-timer.C:
+	case result = <-c:
+		timer.Stop()
+	}
+	return result
+}
