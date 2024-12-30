@@ -1,4 +1,4 @@
-// Package bfh provides a simple to use HTTP client, making most common operations one liners.
+// Package bfh provides a boilerplate free HTTP client, making most common operations one liners.
 // For instance, it can in one single line fetch a page and check that the status code is 2XX, and retry on failure.
 // Example:
 //   body, headers, err := bfh.NewClient().Query("GET", "https://www.example.com", 0, nil, nil)
