@@ -98,6 +98,9 @@ func setDefaultHeader(header http.Header, name, value string) {
 }
 
 // DeJSON is meant to wrap calls to Query to unmarshal a JSON reply body, while correctly handling the case where that body is nil due to an error.
+// Example use:
+//   foo, headers, err := shttp.DeJSON[Foo](shttp.NewClient().Query(...))
+//   // foo has type *Foo
 func DeJSON[T any](body []byte, headers http.Header, err error) (*T, http.Header, error) {
 	if err != nil {
 		return nil, headers, err
