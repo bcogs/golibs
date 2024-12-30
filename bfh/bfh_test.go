@@ -104,7 +104,9 @@ func TestHTTPError(t *testing.T) {
 	s.replyStatus = func() int { return <-replyStatus }
 	replyStatus <- 403
 	replyStatus <- 200
-	require.Error(t, oil.Third(c.Query("GET", url, 0, nil, nil)))
+	_, headers, err := c.Query("GET", url, 0, nil, nil)
+	require.Equalf(t, []string{"grut"}, headers["X-Bfh"], "%#v", headers)
+	require.Error(t, err)
 	require.NoError(t, oil.Third(c.Query("GET", url, 0, nil, nil)))
 
 	replyStatus <- 500
@@ -112,6 +114,12 @@ func TestHTTPError(t *testing.T) {
 	replyStatus <- 200
 	require.NoError(t, oil.Third(c.Query("GET", url, 2, []byte("body"), nil)))
 	require.Equal(t, "body", string(s.reqBody))
+
+	s.replyBody = []byte("abcd")
+	replyStatus <- 403
+	body, _, err := c.Query("GET", url, 0, nil, nil)
+	require.Equal(t, "abcd", string(body))
+	require.Error(t, err)
 }
 
 func TestTimeout(t *testing.T) {

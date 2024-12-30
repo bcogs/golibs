@@ -3,6 +3,7 @@
 // Example:
 //   body, headers, err := bfh.NewClient().Query("GET", "https://www.example.com", 0, nil, nil)
 //   fmt.Println(string(body), headers, err)
+// If it returns an error because the status code isn't 2XX, it still returns non-nil headers and body.
 package bfh
 
 import (
@@ -74,12 +75,12 @@ func (c *Client) do(verb, url string, req *http.Request) ([]byte /* body */, htt
 		return nil, nil, fmt.Errorf("error while sending %s query to %s - %w", verb, url, err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		return nil, nil, fmt.Errorf("%s query to %s failed with status %s", verb, url, resp.Status)
-	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error while reading response body to %s query to %s - %w", verb, url, err)
+		return nil, map[string][]string(resp.Header), fmt.Errorf("error while reading response body to %s query to %s - %w", verb, url, err)
+	}
+	if resp.StatusCode/100 != 2 {
+		return body, map[string][]string(resp.Header), fmt.Errorf("%s query to %s failed with status %s", verb, url, resp.Status)
 	}
 	return body, map[string][]string(resp.Header), nil
 }
