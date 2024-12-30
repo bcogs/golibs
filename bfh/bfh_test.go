@@ -1,4 +1,4 @@
-package shttp
+package bfh
 
 import (
 	"bytes"
@@ -56,7 +56,7 @@ func (s *server) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	b, err := io.ReadAll(req.Body)
 	require.NoError(s.t, err)
 	s.reqBody = b
-	rw.Header().Set("x-shttp", "grut")
+	rw.Header().Set("x-bfh", "grut")
 	if s.replyStatus == nil {
 		rw.WriteHeader(200)
 	} else {
@@ -78,7 +78,7 @@ func TestBasicQuery(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, body)
 	require.Equal(t, "", string(body))
-	require.Equalf(t, []string{"grut"}, headers["X-Shttp"], "%#v", headers)
+	require.Equalf(t, []string{"grut"}, headers["X-Bfh"], "%#v", headers)
 	require.Equal(t, "GET", s.req.Method)
 	require.Equal(t, "/testBasicQuery", s.req.URL.Path)
 	require.Equal(t, "", s.req.URL.Fragment)

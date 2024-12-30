@@ -1,9 +1,9 @@
-// Package shttp provides a simple to use HTTP client, making most common operations one liners.
+// Package bfh provides a simple to use HTTP client, making most common operations one liners.
 // For instance, it can in one single line fetch a page and check that the status code is 2XX, and retry on failure.
 // Example:
-//   body, headers, err := shttp.NewClient().Query("GET", "https://www.example.com", 0, nil, nil)
+//   body, headers, err := bfh.NewClient().Query("GET", "https://www.example.com", 0, nil, nil)
 //   fmt.Println(string(body), headers, err)
-package shttp
+package bfh
 
 import (
 	"bytes"
@@ -51,7 +51,7 @@ func (c *Client) Query(verb, url string, maxRetries uint, body any, extraHeaders
 		default:
 			var err error
 			if b, err = json.Marshal(v); err != nil {
-				return nil, nil, fmt.Errorf("bad body parameter in call to shttp.Client.Query: not nil, not []byte, not string, and marshaling it to JSON failed - %w", err)
+				return nil, nil, fmt.Errorf("bad body parameter in call to bfh.Client.Query: not nil, not []byte, not string, and marshaling it to JSON failed - %w", err)
 			}
 			setDefaultHeader(req.Header, "Content-Type", "application/json")
 		}
@@ -99,7 +99,7 @@ func setDefaultHeader(header http.Header, name, value string) {
 
 // DeJSON is meant to wrap calls to Query to unmarshal a JSON reply body, while correctly handling the case where that body is nil due to an error.
 // Example use:
-//   foo, headers, err := shttp.DeJSON[Foo](shttp.NewClient().Query(...))
+//   foo, headers, err := bfh.DeJSON[Foo](bfh.NewClient().Query(...))
 //   // foo has type *Foo
 func DeJSON[T any](body []byte, headers http.Header, err error) (*T, http.Header, error) {
 	if err != nil {

@@ -1,4 +1,4 @@
-module github.com/bcogs/golibs/shttp
+module github.com/bcogs/golibs/bfh
 
 go 1.23.4
 
