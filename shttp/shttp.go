@@ -1,3 +1,8 @@
+// Package shttp provides a simple to use HTTP client, making most common operations one liners.
+// For instance, it can in one single line fetch a page and check that the status code is 2XX, and retry on failure.
+// Example:
+//   body, headers, err := shttp.NewClient().Query("GET", "https://www.example.com", 0, nil, nil)
+//   fmt.Println(string(body), headers, err)
 package shttp
 
 import (
