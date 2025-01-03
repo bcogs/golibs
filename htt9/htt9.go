@@ -1,4 +1,5 @@
 // Package htt9 simplifies most client http queries to one liners: sending a query, checking the return code, optional json (un-)marshalling, and setting of good defaults (timeouts, retries etc) is a one line business.
+//
 // Example 1: fetch a page and print it
 //
 //	if r := (&htt9.Query{URL: "https://example.com"}).Do(nil, 3 /* max retries */); r.Err != nil { fmt.Println(r.Err) }
