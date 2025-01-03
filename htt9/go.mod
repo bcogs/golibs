@@ -1,9 +1,9 @@
-module github.com/bcogs/golibs/bfh
+module github.com/bcogs/golibs/htt9
 
 go 1.23.4
 
 require (
-	github.com/bcogs/golibs/oil v0.0.0-20231130201456-d5f33eafcca1
+	github.com/bcogs/golibs/oil v0.0.0-20241230094902-5622b6274d2c
 	github.com/stretchr/testify v1.10.0
 )
 

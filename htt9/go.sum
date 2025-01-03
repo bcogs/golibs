@@ -1,5 +1,5 @@
-github.com/bcogs/golibs/oil v0.0.0-20231130201456-d5f33eafcca1 h1:fteAGhA12NDneiiR+MmFSB+dT5Yo/prgyDm7XqiWt14=
-github.com/bcogs/golibs/oil v0.0.0-20231130201456-d5f33eafcca1/go.mod h1:1n6sohLGVmff0KOlMs/OxY9hS9nmDThqxRsb3xHxGeg=
+github.com/bcogs/golibs/oil v0.0.0-20241230094902-5622b6274d2c h1:Mlh5eTONjnEuplL3vrD+X2pAgaQy31wEmTBMWmMZnPo=
+github.com/bcogs/golibs/oil v0.0.0-20241230094902-5622b6274d2c/go.mod h1:1n6sohLGVmff0KOlMs/OxY9hS9nmDThqxRsb3xHxGeg=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
