@@ -59,10 +59,11 @@ type Query struct {
 }
 
 // Do sends the query and returns the result.
+// If optionalClient is nil, a default Client is used.
 // maxRetries is a number of retries, so the first attempt doesn't count, e.g. if maxRetries is 2, up to 3 attempts can be made.
-func (q *Query) Do(c *Client /* optional */, maxRetries uint) *Result {
-	if c == nil {
-		c = NewClient()
+func (q *Query) Do(optionalClient *Client, maxRetries uint) *Result {
+	if optionalClient == nil {
+		optionalClient = NewClient()
 	}
 	r, verb := &Result{Query: q}, q.verb()
 	req, err := http.NewRequest(verb, q.URL, nil)
@@ -84,7 +85,7 @@ func (q *Query) Do(c *Client /* optional */, maxRetries uint) *Result {
 	interpretResponse := oil.If(q.InterpretResponse == nil, DefaultInterpretResponse, q.InterpretResponse)
 	for {
 		req.Body = io.NopCloser(bytes.NewReader(q.Body))
-		if r.Body, r.Resp, err = q.do(c.HttpClient, req); err == nil {
+		if r.Body, r.Resp, err = q.do(optionalClient.HttpClient, req); err == nil {
 			var retry bool
 			if err, retry = interpretResponse(r, maxRetries); err == nil || !retry {
 				return r
@@ -116,14 +117,14 @@ func lowerStrEqual(sa, sb string) bool {
 
 // DoWithJSON marshals an object in json, and on success sends the query by calling Do(), setting the json as the Query Body field.
 // If the Query's ExtraHeaders doesn't have a Content-Type key, an application/json content-type header is inserted.
-func (q *Query) DoWithJSON(c *Client /* optional */, maxRetries uint, body any) *Result {
+func (q *Query) DoWithJSON(optionalClient *Client, maxRetries uint, body any) *Result {
 	var err error
 	q.Body, err = json.Marshal(body)
 	if err != nil {
 		return &Result{Query: q, Err: fmt.Errorf("unable to send %s query to %q - marshaling the body to JSON failed - %w", q.verb(), q.URL, err)}
 	}
 	q.defaultContentType = "application/json"
-	r := q.Do(c, maxRetries)
+	r := q.Do(optionalClient, maxRetries)
 	q.defaultContentType = "" // in case of future call to r.Query.Do
 	return r
 }
@@ -182,7 +183,7 @@ func DeJSON[T any](r *Result) ( /* unmarshaled reply body */ *T, *Result) {
 // responses after a query that succeeded at the http layer.
 // It succeeds if the status code is 2xx, and otherwise returns an error.
 // If the retry count is down to 0, the returned error contains the http response body, truncated if it's too long.
-func DefaultInterpretResponse(r *Result, retriesLeft uint) (error /* retryable */, bool) {
+func DefaultInterpretResponse(r *Result, retriesLeft uint) (error, bool /* retryable */) {
 	if r.Resp.StatusCode/100 == 2 {
 		return nil, false
 	}
