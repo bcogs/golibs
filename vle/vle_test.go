@@ -15,13 +15,16 @@ import (
 
 func TestEncodeUnsigned(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct{n uint64; expected []byte}{
+	for _, tc := range []struct {
+		n        uint64
+		expected []byte
+	}{
 		{0x0, []byte{0}},
 		{0x1, []byte{1}},
 		{0x7f, []byte{0x7f}},
 		{0x80, []byte{0x81, 0x00}},
 		{0x7fff, []byte{0x81, 0xff, 0x7f}},
-	}{
+	} {
 		b := EncodeUnsigned(tc.n)
 		require.Equalf(t, tc.expected, b, "%x -> %x, expected %x", tc.n, b, tc.expected)
 	}
@@ -29,7 +32,10 @@ func TestEncodeUnsigned(t *testing.T) {
 
 func TestEncodeSigned(t *testing.T) {
 	t.Parallel()
-	for _, tc := range []struct{n int64; expected []byte}{
+	for _, tc := range []struct {
+		n        int64
+		expected []byte
+	}{
 		{-0x1, []byte{0x40}},
 		{0x0, []byte{0}},
 		{0x1, []byte{1}},
@@ -44,7 +50,7 @@ func TestEncodeSigned(t *testing.T) {
 		{0xfffff, []byte{0xbf, 0xff, 0x7f}},
 		{0x100000, []byte{0x80, 0xc0, 0x80, 0x00}},
 		{0x7ffffff, []byte{0xbf, 0xff, 0xff, 0x7f}},
-	}{
+	} {
 		b := EncodeSigned(tc.n)
 		require.Equalf(t, tc.expected, b, "%#x -> %x, expected %x", tc.n, b, tc.expected)
 		if tc.n > 1 {
@@ -57,18 +63,20 @@ func TestEncodeSigned(t *testing.T) {
 }
 
 type mockReaderCall struct {
-		n int // expected argument of the call
-		b []byte  // if non-nil, expect a Peek(n) and return (b, err)
-		discarded int // if b is nil, expect a Discard(n) and return (discarded, err)
-		err error
+	n         int    // expected argument of the call
+	b         []byte // if non-nil, expect a Peek(n) and return (b, err)
+	discarded int    // if b is nil, expect a Discard(n) and return (discarded, err)
+	err       error
 }
 
-type mockReader struct {  // mock implementation of BufioReader
-	t *testing.T
+type mockReader struct { // mock implementation of BufioReader
+	t     *testing.T
 	calls chan mockReaderCall
 }
 
-func newMockReader(t *testing.T) *mockReader { return &mockReader{t: t, calls: make(chan mockReaderCall, 10)} }
+func newMockReader(t *testing.T) *mockReader {
+	return &mockReader{t: t, calls: make(chan mockReaderCall, 10)}
+}
 
 func (m *mockReader) Discard(n int) (discarded int, err error) {
 	e := <-m.calls
@@ -95,10 +103,10 @@ func TestReadUnsignedNoErr(t *testing.T) {
 }
 
 func testReadIntNoError[N constraints.Integer](
-t *testing.T,
-read func(BufioReader)(N, int, error),
-encode func(N) []byte,
-from, to int) {
+	t *testing.T,
+	read func(BufioReader) (N, int, error),
+	encode func(N) []byte,
+	from, to int) {
 	for i := from; i <= to; i++ {
 		n := N(i)
 		marshaled := encode(n)
@@ -106,12 +114,16 @@ from, to int) {
 		r := bytes.NewReader(oil.If(more, append(marshaled, []byte("more")...), marshaled))
 		br := bufio.NewReader(r)
 		got, l, err := read(br)
-		if err != io.EOF { require.NoErrorf(t, err, "%#x %x", marshaled, n) }
+		if err != io.EOF {
+			require.NoErrorf(t, err, "%#x %x", marshaled, n)
+		}
 		require.Equalf(t, n, got, "%x -> %#x, expected %#x", marshaled, got, n)
 		require.Equalf(t, len(marshaled), l, "%#x %x", marshaled, n)
 		if more {
 			b, err := br.Peek(4)
-			if err != io.EOF { require.NoErrorf(t, err, "%#x %x", marshaled, n) }
+			if err != io.EOF {
+				require.NoErrorf(t, err, "%#x %x", marshaled, n)
+			}
 			require.Equalf(t, "more", string(b), "%#x %x", marshaled, n)
 		} else {
 			require.Equal(t, io.EOF, oil.Second(br.Peek(1)))
@@ -131,14 +143,18 @@ func testSignedMaxLength[S constraints.Signed, U constraints.Unsigned](t *testin
 	maxInt := S(^U(0) >> 1)
 	b := EncodeSigned(maxInt)
 	got, l, err := ReadSigned[S](bufio.NewReader(bytes.NewReader(b)))
-	if err != io.EOF { require.NoError(t, err) }
+	if err != io.EOF {
+		require.NoError(t, err)
+	}
 	require.Equal(t, maxInt, got)
 	require.Equal(t, len(b), l)
 
-	minInt := -maxInt -1
+	minInt := -maxInt - 1
 	b = EncodeSigned(minInt)
 	got, l, err = ReadSigned[S](bufio.NewReader(bytes.NewReader(b)))
-	if err != io.EOF { require.NoError(t, err) }
+	if err != io.EOF {
+		require.NoError(t, err)
+	}
 	require.Equal(t, minInt, got)
 	require.Equal(t, len(b), l)
 }
@@ -155,7 +171,9 @@ func testUnsignedMaxLength[U constraints.Unsigned](t *testing.T) {
 	maxInt := ^U(0)
 	b := EncodeUnsigned(maxInt)
 	got, l, err := ReadUnsigned[U](bufio.NewReader(bytes.NewReader(b)))
-	if err != io.EOF { require.NoError(t, err) }
+	if err != io.EOF {
+		require.NoError(t, err)
+	}
 	require.Equal(t, maxInt, got)
 	require.Equal(t, len(b), l)
 }
@@ -197,8 +215,8 @@ func testReadIntIOError[N constraints.Integer](t *testing.T, read func(BufioRead
 		{n: 3, b: []byte{0x81}, err: nil},
 		{n: 3, b: []byte{0x81, 0x80}, err: errz},
 		{n: 3, b: []byte{0x81, 0x80}, err: nil},
-	}{
-		mr.calls<- call
+	} {
+		mr.calls <- call
 		_, l, err := read(mr)
 		require.Equal(t, l, 0)
 		require.Equal(t, call.err, err)
@@ -207,8 +225,8 @@ func testReadIntIOError[N constraints.Integer](t *testing.T, read func(BufioRead
 	for _, call := range []mockReaderCall{
 		{n: 3, b: []byte{0x81}, err: io.EOF},
 		{n: 3, b: []byte{0x81, 0x80}, err: io.EOF},
-	}{
-		mr.calls<- call
+	} {
+		mr.calls <- call
 		_, l, err := read(mr)
 		require.Equal(t, l, 0)
 		require.ErrorContains(t, err, "parse")
@@ -218,9 +236,9 @@ func testReadIntIOError[N constraints.Integer](t *testing.T, read func(BufioRead
 		{n: 3, b: []byte{0x40}, err: errz},
 		{n: 3, b: []byte{0xc1, 0x00}, err: errz},
 		{n: 3, b: []byte{0x81, 0x8f, 0x00}, err: errz},
-	}{
-		mr.calls<- call
-		mr.calls<- mockReaderCall{n: len(call.b), err: nil}
+	} {
+		mr.calls <- call
+		mr.calls <- mockReaderCall{n: len(call.b), err: nil}
 		_, l, err := read(mr)
 		require.Equalf(t, len(call.b), l, "%x", call.b)
 		require.Equal(t, call.err, err)
