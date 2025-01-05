@@ -1,3 +1,4 @@
+// Package vle provides variable length encoding (un-)marshaling.
 package vle
 
 import (
@@ -21,6 +22,7 @@ func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, 
 	return buf[i:], b
 }
 
+// EncodeSigned marshals a signed integer.
 func EncodeSigned[N constraints.Signed](n N) []byte {
 	signBit := byte(0)
 	if n < 0 {
@@ -31,6 +33,7 @@ func EncodeSigned[N constraints.Signed](n N) []byte {
 	return buf
 }
 
+// EncodeUnsigned marshals an unsigned integer.
 func EncodeUnsigned[N constraints.Unsigned](n N) []byte {
 	buf, b := encodePositiveExceptFirstByte(n, 0x80)
 	buf[0] = b
@@ -55,6 +58,9 @@ type BufioReader interface {
 	Peek(n int) ([]byte, error)
 }
 
+// ReadSigned reads and parses a signed integer.
+// It returns the integer, the number of bytes Discard()ed from the reader, and an error.
+// Note the error can be non-nil even if an integer was successfully read and parsed.  The real test to know if an integer was parsed is to check that the number of bytes discarded (second returned item) is >0.
 func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 	nBits := uint(unsafe.Sizeof(N(0)) * 8)
 	maxBytes := int((nBits + 6) / 7)
@@ -83,6 +89,9 @@ func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 	}
 }
 
+// ReadUnsigned reads and parses an unsigned integer.
+// It returns the integer, the number of bytes Discard()ed from the reader, and an error.
+// Note the error can be non-nil even if an integer was successfully read and parsed.  The real test to know if an integer was parsed is to check that the number of bytes discarded (second returned item) is >0.
 func ReadUnsigned[N constraints.Unsigned](r BufioReader) (N, int, error) {
 	nBits := uint(unsafe.Sizeof(N(0)) * 8)
 	maxBytes := int((nBits + 6) / 7)
