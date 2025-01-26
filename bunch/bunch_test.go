@@ -23,7 +23,7 @@ type failingReader struct{}
 
 func (fr failingReader) Read(p []byte) (int, error) { return 0, fmt.Errorf("injected error") }
 
-func TestWriteThenRead(t *testing.T) {
+func TestWriteAndPathAndWalk(t *testing.T) {
 	t.Parallel()
 	tmp := t.TempDir()
 	b, err := NewBunch(tmp, &Options{})
@@ -68,6 +68,14 @@ func TestWriteThenRead(t *testing.T) {
 	}
 	require.NoError(t, filepath.Walk(tmp, func(path string, _ fs.FileInfo, err error) error {
 		require.NoError(t, err)
+		require.True(t, m[path], path)
+		return nil
+	}))
+	require.NoError(t, os.WriteFile(b.Path([]string{".garbage"}), []byte("foo"), 0666))
+	r := tmp + string(filepath.Separator)
+	require.NoError(t, b.Walk(func(path string, _ fs.DirEntry, err error) error {
+		require.NoError(t, err)
+		require.True(t, strings.HasPrefix(path, r), path)
 		require.True(t, m[path], path)
 		return nil
 	}))

@@ -20,9 +20,11 @@
 package bunch
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -50,6 +52,21 @@ func NewBunch(root string, o *Options) (*Bunch, error) {
 // Path gives a usable file path, given its relative path.
 func (b *Bunch) Path(relPath []string) string {
 	return b.Root + string(os.PathSeparator) + filepath.Join(relPath...)
+}
+
+// Walk enumerates all the files of the Bunch.  It has the same semantics as filepath.WalkDir, except it skips all directories and returns only files.
+// The callback is called with a path that starts with the bunch root.
+// All temporary or garbage files, whose name start with a dot, are skipped.
+func (b *Bunch) Walk(fn fs.WalkDirFunc) error {
+	return filepath.WalkDir(b.Root, func(path string, de fs.DirEntry, err error) error {
+		if de.IsDir() {
+			return nil
+		}
+		if k := bytes.LastIndexByte([]byte(path), filepath.Separator); k >= 0 && []byte(path)[k+1] == '.' {
+			return nil
+		}
+		return fn(path, de, err)
+	})
 }
 
 // Write creates (or overwrites) a file with the content of a reader, creating all needed subdirectories.
