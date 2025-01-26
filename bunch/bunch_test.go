@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bcogs/golibs/oil"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,25 @@ func TestNewBunch(t *testing.T) {
 type failingReader struct{}
 
 func (fr failingReader) Read(p []byte) (int, error) { return 0, fmt.Errorf("injected error") }
+
+func TestCleanGarbage(t *testing.T) {
+	t.Parallel()
+	tmp := t.TempDir()
+	b, err := NewBunch(tmp, &Options{})
+	require.NoError(t, err)
+	require.NoError(t, b.Write([]string{"foo", "bar", "baz"}, strings.NewReader("hello")))
+	require.NoError(t, os.WriteFile(filepath.Join(b.Path([]string{}), ".tmpblah"), []byte("garbage"), 0666))
+	require.NoError(t, os.WriteFile(filepath.Join(b.Path([]string{"foo"}), ".tmpblah"), []byte("garbage"), 0666))
+	require.NoError(t, os.WriteFile(filepath.Join(b.Path([]string{"foo", "bar"}), ".tmpblah"), []byte("garbage"), 0666))
+	require.NoError(t, b.CleanGarbage(time.Hour))
+	require.NoError(t, oil.Second(os.Stat(filepath.Join(tmp, ".tmpblah"))))
+	require.NoError(t, oil.Second(os.Stat(filepath.Join(tmp, "foo", ".tmpblah"))))
+	require.NoError(t, oil.Second(os.Stat(filepath.Join(tmp, "foo", "bar", ".tmpblah"))))
+	require.NoError(t, b.CleanGarbage(0))
+	require.Error(t, oil.Second(os.Stat(filepath.Join(tmp, ".tmpblah"))))
+	require.Error(t, oil.Second(os.Stat(filepath.Join(tmp, "foo", ".tmpblah"))))
+	require.Error(t, oil.Second(os.Stat(filepath.Join(tmp, "foo", "bar", ".tmpblah"))))
+}
 
 func TestWriteAndPathAndWalk(t *testing.T) {
 	t.Parallel()

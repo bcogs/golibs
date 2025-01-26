@@ -27,6 +27,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Bunch represents a directory and the bunch of files it contains.
@@ -47,6 +48,35 @@ func NewBunch(root string, o *Options) (*Bunch, error) {
 		return nil, fmt.Errorf("%q isn't a directory", fi.Name())
 	}
 	return &Bunch{Root: root}, nil
+}
+
+// CleanGarbage deletes all garbage in the Bunch (typically, garbage is created when somethng starts to write a file and crashes before it manages to rename the temporary file).
+// All temporary files whose modification time is older than the tll are deleted.
+func (b *Bunch) CleanGarbage(ttl time.Duration) error {
+	var finalErr error
+	cutoff := time.Now().Add(-ttl)
+	err := filepath.WalkDir(b.Root, func(path string, de fs.DirEntry, err error) error {
+		if err != nil && finalErr != nil {
+			finalErr = err
+		}
+		if k := bytes.LastIndexByte([]byte(path), filepath.Separator); k >= 0 && []byte(path)[k+1] == '.' {
+			fi, err := de.Info()
+			if err != nil && finalErr != nil {
+				finalErr = err
+				return nil
+			}
+			if fi.ModTime().Before(cutoff) {
+				if err := os.Remove(path); err != nil && finalErr != nil {
+					finalErr = err
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return finalErr
 }
 
 // Path gives a usable file path, given its relative path.
