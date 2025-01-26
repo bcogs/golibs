@@ -28,6 +28,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/bcogs/golibs/oil"
 )
 
 // Bunch represents a directory and the bunch of files it contains.
@@ -56,27 +58,24 @@ func (b *Bunch) CleanGarbage(ttl time.Duration) error {
 	var finalErr error
 	cutoff := time.Now().Add(-ttl)
 	err := filepath.WalkDir(b.Root, func(path string, de fs.DirEntry, err error) error {
-		if err != nil && finalErr != nil {
+		if err != nil && finalErr == nil {
 			finalErr = err
 		}
 		if k := bytes.LastIndexByte([]byte(path), filepath.Separator); k >= 0 && []byte(path)[k+1] == '.' {
 			fi, err := de.Info()
-			if err != nil && finalErr != nil {
+			if err != nil && finalErr == nil {
 				finalErr = err
 				return nil
 			}
 			if fi.ModTime().Before(cutoff) {
-				if err := os.Remove(path); err != nil && finalErr != nil {
+				if err := os.Remove(path); err != nil && finalErr == nil {
 					finalErr = err
 				}
 			}
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return finalErr
+	return oil.If(err != nil, err, finalErr)
 }
 
 // Path gives a usable file path, given its relative path.
@@ -88,8 +87,12 @@ func (b *Bunch) Path(relPath []string) string {
 // The callback is called with a path that starts with the bunch root.
 // All temporary or garbage files, whose name start with a dot, are skipped.
 func (b *Bunch) Walk(fn fs.WalkDirFunc) error {
-	return filepath.WalkDir(b.Root, func(path string, de fs.DirEntry, err error) error {
+	var finalErr error
+	err := filepath.WalkDir(b.Root, func(path string, de fs.DirEntry, err error) error {
 		if de.IsDir() {
+			if err != nil && finalErr == nil {
+				finalErr = err
+			}
 			return nil
 		}
 		if k := bytes.LastIndexByte([]byte(path), filepath.Separator); k >= 0 && []byte(path)[k+1] == '.' {
@@ -97,6 +100,7 @@ func (b *Bunch) Walk(fn fs.WalkDirFunc) error {
 		}
 		return fn(path, de, err)
 	})
+	return oil.If(err != nil, err, finalErr)
 }
 
 // Write creates (or overwrites) a file with the content of a reader, creating all needed subdirectories.
