@@ -112,7 +112,7 @@ func (b *Bunch) tmpFilePath(relPath []string) (string, string) {
 	return dir, ".tmp" + relPath[len(relPath)-1]
 }
 
-// ValidateRelPath verifies that a relative path is valide for use in a Bunch.
+// ValidateRelPath verifies that a relative path is valid for use in a Bunch.
 // The path components mustn't result in escaping the root, mustn't contain too exotic characters, and mustn't start with a dot (except "." and "..").
 func ValidateRelPath(rp []string) error {
 	depth := 0
