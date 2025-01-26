@@ -52,8 +52,8 @@ func NewBunch(root string, o *Options) (*Bunch, error) {
 	return &Bunch{Root: root}, nil
 }
 
-// CleanGarbage deletes all garbage in the Bunch (typically, garbage is created when somethng starts to write a file and crashes before it manages to rename the temporary file).
-// All temporary files whose modification time is older than the tll are deleted.
+// CleanGarbage deletes all garbage in the Bunch (typically, garbage is created when somethng starts to write a file and dies before it renames the temporary file).
+// All temporary files whose modification time is older than the ttl are deleted.
 func (b *Bunch) CleanGarbage(ttl time.Duration) error {
 	var finalErr error
 	cutoff := time.Now().Add(-ttl)
