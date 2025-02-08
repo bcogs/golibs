@@ -128,10 +128,14 @@ func (b *Bunch) Write(relPath []string, reader io.Reader) error {
 		}
 		break
 	}
-	defer f.Close()
 	if _, err = io.Copy(f, reader); err != nil {
 		os.Remove(f.Name())
+		f.Close()
 		return fmt.Errorf("writing to temporary file %s failed - %w", f.Name(), err)
+	}
+	if err = f.Close(); err != nil {
+		os.Remove(f.Name())
+		return fmt.Errorf("closing temporary file %s failed - %w", f.Name(), err)
 	}
 	err = os.Rename(f.Name(), b.Path(relPath))
 	if err != nil {
