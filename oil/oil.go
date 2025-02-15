@@ -182,12 +182,14 @@ func MapGet[K comparable, V any](m map[K]V, key K, defaultValue V) V {
 	return defaultValue
 }
 
-// MapSetDefault sets a value in a map for a given key, if that key isn't in the map already.  It returns the map itself.
-func MapSetDefault[K comparable, V any](m map[K]V, key K, value V) map[K]V {
-	if _, ok := m[key]; !ok {
+// MapSetDefault sets a value in a map for a given key, if that key isn't in the map already.  It returns the value.
+func MapSetDefault[K comparable, V any](m map[K]V, key K, value V) V {
+	if v, ok := m[key]; !ok {
 		m[key] = value
+		return value
+	} else {
+		return v
 	}
-	return m
 }
 
 // MapGetOrNew gets a value from a map for a given key, or creates it (and inserts it)

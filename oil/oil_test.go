@@ -125,12 +125,10 @@ func TestMapDefaults(t *testing.T) {
 	m := map[int]int{1: 2}
 	assert.Equal(t, 5, oil.MapGet(m, 8, 5))
 	assert.Equal(t, 2, oil.MapGet(m, 1, 5))
-	m2 := oil.MapSetDefault(m, 1, 3)
+	assert.Equal(t, 2, oil.MapSetDefault(m, 1, 3))
 	assert.Equal(t, map[int]int{1: 2}, m)
-	assert.Equal(t, m, m2)
-	m2 = oil.MapSetDefault(m, 5, 3)
+	assert.Equal(t, 3, oil.MapSetDefault(m, 5, 3))
 	assert.Equal(t, map[int]int{1: 2, 5: 3}, m)
-	assert.Equal(t, m, m2)
 }
 
 func TestMapGetOrNew(t *testing.T) {
