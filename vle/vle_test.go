@@ -30,18 +30,6 @@ func TestEncodeUnsigned(t *testing.T) {
 	}
 }
 
-func TestEncodeAndDecodeAllUnsigned(t *testing.T) {
-	t.Parallel()
-	for i := uint(0); i < 0xffff+100; i++ {
-		b := EncodeUnsigned(i)
-		require.NotEqualf(t, byte(DUMMYUNSIGNED), b[0], "%d %d %d", i, b[0], DUMMYUNSIGNED)
-		n, l, err := ReadUnsigned[uint](bufio.NewReader(bytes.NewReader(b)))
-		require.Equal(t, err, io.EOF, i)
-		require.Equal(t, n, i)
-		require.Equal(t, len(b), l, i)
-	}
-}
-
 func TestEncodeSigned(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
@@ -65,12 +53,24 @@ func TestEncodeSigned(t *testing.T) {
 	} {
 		b := EncodeSigned(tc.n)
 		require.Equalf(t, tc.expected, b, "%#x -> %x, expected %x", tc.n, b, tc.expected)
-		if tc.n > 1 {
+		if tc.n >= 1 {
 			tc.expected[0] |= 0x40
 			n := -(tc.n + 1)
 			b = EncodeSigned(n)
 			require.Equalf(t, tc.expected, b, "0x#%x -> %x, expected %x", n, b, tc.expected)
 		}
+	}
+}
+
+func TestEncodeAndDecodeAllUnsigned(t *testing.T) {
+	t.Parallel()
+	for i := uint(0); i < 0xffff+100; i++ {
+		b := EncodeUnsigned(i)
+		require.NotEqualf(t, byte(DUMMYUNSIGNED), b[0], "%d %d %d", i, b[0], DUMMYUNSIGNED)
+		n, l, err := ReadUnsigned[uint](bufio.NewReader(bytes.NewReader(b)))
+		require.Equal(t, err, io.EOF, i)
+		require.Equal(t, n, i)
+		require.Equal(t, len(b), l, i)
 	}
 }
 
