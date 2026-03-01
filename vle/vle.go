@@ -75,7 +75,7 @@ type BufioReader interface {
 func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 	nBits := uint(unsafe.Sizeof(N(0)) * 8)
 	maxBytes := int((nBits + 6) / 7)
-	buf, err := r.Peek(int((nBits + 6) / 7))
+	buf, err := r.Peek(maxBytes)
 	if len(buf) <= 0 {
 		return 0, 0, err
 	}
