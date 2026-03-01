@@ -3,6 +3,7 @@ package vle
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"testing"
@@ -71,6 +72,16 @@ func TestEncodeAndDecodeAllUnsigned(t *testing.T) {
 		require.Equal(t, err, io.EOF, i)
 		require.Equal(t, n, i)
 		require.Equal(t, len(b), l, i)
+		if i <= 0xffff {
+			n16, l, err := ReadUnsigned[uint16](bufio.NewReader(bytes.NewReader(b)))
+			require.Truef(t, err == nil || errors.Is(err, io.EOF), "%d %s", i, err)
+			require.Equal(t, n16, uint16(i))
+			require.Equal(t, len(b), l, i)
+			n16, l, err = ReadUnsigned[uint16](bufio.NewReader(bytes.NewReader(append(b, byte(0)))))
+			require.NoError(t, err, i)
+			require.Equal(t, n16, uint16(i))
+			require.Equal(t, len(b), l, i)
+		}
 	}
 }
 
@@ -82,6 +93,16 @@ func TestEncodeAndDecodeAllSigned(t *testing.T) {
 		require.Equal(t, err, io.EOF, i)
 		require.Equal(t, n, i)
 		require.Equal(t, len(b), l, i)
+		if i >= -32768 && i <= 32767 {
+			n16, l, err := ReadSigned[int16](bufio.NewReader(bytes.NewReader(b)))
+			require.Truef(t, err == nil || errors.Is(err, io.EOF), "%d %s", i, err)
+			require.Equal(t, n16, int16(i))
+			require.Equal(t, len(b), l, i)
+			n16, l, err = ReadSigned[int16](bufio.NewReader(bytes.NewReader(append(b, byte(0)))))
+			require.NoError(t, err, i)
+			require.Equal(t, n16, int16(i))
+			require.Equal(t, len(b), l, i)
+		}
 	}
 }
 
@@ -204,7 +225,7 @@ func testUnsignedMaxLength[U constraints.Unsigned](t *testing.T) {
 func TestReadIntTooManyBits(t *testing.T) {
 	const maxs16 = 0x7fff
 	require.NoError(t, oil.Third(ReadSigned[int16](bufio.NewReader(bytes.NewReader(EncodeSigned(maxs16))))))
-	_, l, err := ReadSigned[int16](bufio.NewReader(bytes.NewReader(EncodeSigned(int32(maxs16 + 1)))))
+	_, l, err := ReadSigned[int16](bufio.NewReader(bytes.NewReader(EncodeSigned(int32(maxs16 + 2)))))
 	require.ErrorContains(t, err, "parse")
 	require.Equal(t, 0, l)
 

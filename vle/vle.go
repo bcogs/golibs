@@ -9,6 +9,7 @@
 package vle
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -31,6 +32,11 @@ func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, 
 		i--
 	}
 	return buf[i:], b
+}
+
+// DummySigned returns a sequence of bytes that will be recognized by ReadSigned as a signed dummy value.
+func DummySigned[N constraints.Signed](n N) []byte {
+	return bytes.Repeat([]byte{0x80}, int((unsafe.Sizeof(N(0)) * 8 + 6) / 7 + 1))
 }
 
 // EncodeSigned marshals a signed integer.
@@ -81,8 +87,10 @@ func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 	}
 	b0 := buf[0]
 	sign := /* -1 or 1 */ 1 - N(b0&0x40)/0x20
+	var n N
+	var l int
 	if b0&0x80 != 0 {
-		n, l := parsePositive[N](buf[1:])
+		n, l = parsePositive[N](buf[1:])
 		if l < 0 {
 			if len(buf) < maxBytes && !errors.Is(err, io.EOF) {
 				return 0, 0, err
@@ -93,13 +101,16 @@ func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 			return 0, 0, fmt.Errorf("vle parse error: %T unmarshals to %d bits", n, p)
 		}
 		n = (N(b0&0x3f) << (7 * l)) | n
+                n = sign * (n + max(-sign, 0))
 		l++
-		r.Discard(l)
-		return sign * (n + max(-sign, 0)), l, err
 	} else {
-		r.Discard(1)
-		return sign * ((N(b0) & 0x3f) + (1-sign)/2), 1, err
+		n, l = sign * ((N(b0) & 0x3f) + (1-sign)/2), 1
 	}
+	r.Discard(l)
+	if l < len(buf) {
+		return n, l, nil
+	}
+	return n, l, err
 }
 
 // ReadUnsigned reads and parses an unsigned integer.
@@ -123,5 +134,8 @@ func ReadUnsigned[N constraints.Unsigned](r BufioReader) (N, int, error) {
 		return 0, 0, fmt.Errorf("vle parse error: %T unmarshals to %d bits", n, p)
 	}
 	r.Discard(l)
+	if l < len(buf) {
+		return n, l, nil
+	}
 	return n, l, err
 }
