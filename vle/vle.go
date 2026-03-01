@@ -1,4 +1,9 @@
 // Package vle provides variable length encoding (un-)marshaling.
+// Format:
+//   - most significant bit of each byte is 0 if it's the last byte
+//   - for signed numbers, second most significant bit of the first byte is 1 if it's negative, the rest is their absolute value
+//   - the 7 least significant bits of the last byte are the 7 least significant bits of the encoded value
+//   - then walking backwards, the 7 least significant bits of each byte are the next 7 bits of the encoded value
 package vle
 
 import (
@@ -12,7 +17,7 @@ import (
 )
 
 const (
-	DUMMYUNSIGNED = 0x80 // can't possibly the first byte of EncodeUnsigned result
+	DUMMYUNSIGNED = 0x80  // can't possibly be the first byte of what EncodeUnsigned returns
 )
 
 func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, byte) {
