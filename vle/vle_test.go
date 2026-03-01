@@ -30,6 +30,28 @@ func TestEncodeUnsigned(t *testing.T) {
 	}
 }
 
+func TestEncodeAndDecodeAllUnsigned(t *testing.T) {
+	t.Parallel()
+	for i := uint(0); i < 0x234; i++ {
+		b := EncodeUnsigned(i)
+		require.Truef(t, b[0] < DUMMYFIRST || b[0] > DUMMYLAST, "%d %d %d", b, DUMMYFIRST, DUMMYLAST)
+		n, _, err := ReadUnsigned[uint](bufio.NewReader(bytes.NewReader(b)))
+		require.Equal(t, err, io.EOF, i)
+		require.Equal(t, n, i)
+	}
+}
+
+func TestEncodeAndDecodeAllSigned(t *testing.T) {
+	t.Parallel()
+	for i := -0x234; i < 0x234; i++ {
+		b := EncodeSigned(i)
+		require.Truef(t, b[0] < DUMMYFIRST || b[0] > DUMMYLAST, "%d %d %d", b, DUMMYFIRST, DUMMYLAST)
+		n, _, err := ReadSigned[int](bufio.NewReader(bytes.NewReader(b)))
+		require.Equal(t, err, io.EOF, i)
+		require.Equal(t, n, i)
+	}
+}
+
 func TestEncodeSigned(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

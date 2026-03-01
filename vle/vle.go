@@ -11,6 +11,12 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
+const (
+	// range of dummy values that can't possibly be the first byte of something returned by Encode*
+	DUMMYFIRST = 197
+	DUMMYLAST  = 0xff
+)
+
 func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, byte) {
 	buf, b := make([]byte, (unsafe.Sizeof(n)*8+6)/7), byte(n&0x7f)
 	i := len(buf) - 1
