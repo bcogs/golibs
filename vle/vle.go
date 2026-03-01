@@ -2,14 +2,13 @@
 // Format:
 //   - most significant bit of each byte is 0 if it's the last byte
 //   - for signed numbers:
-//     - the second most significant bit of the first byte is 1 if it's negative
-//     - the rest is the int itself if it's >=0 or abs(the int) - 1 otherwise
+//   - the second most significant bit of the first byte is 1 if it's negative
+//   - the rest is the int itself if it's >=0 or abs(the int) - 1 otherwise
 //   - the 7 least significant bits of the last byte are the 7 least significant bits of the encoded value
 //   - then walking backwards, the 7 least significant bits of each byte are the next 7 bits of the encoded value
 package vle
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -19,9 +18,7 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-const (
-	DUMMYUNSIGNED = 0x80  // can't possibly be the first byte of what EncodeUnsigned returns
-)
+var Dummy = errors.New("vle parse error: dummy value found")
 
 func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, byte) {
 	buf, b := make([]byte, (unsafe.Sizeof(n)*8+6)/7), byte(n&0x7f)
@@ -34,9 +31,32 @@ func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, 
 	return buf[i:], b
 }
 
-// DummySigned returns a sequence of bytes that will be recognized by ReadSigned as a signed dummy value.
-func DummySigned[N constraints.Signed](n N) []byte {
-	return bytes.Repeat([]byte{0x80}, int((unsafe.Sizeof(N(0)) * 8 + 6) / 7 + 1))
+// DummySigned returns a sequence of bytes that will be recognized by ReadSigned[THE SAME TYPE] as a signed dummy value.
+// It's one byte longer than the maximum possible len of the EncodeSigned result for the same type.
+func DummySigned[N constraints.Signed]() []byte {
+	buf := make([]byte, (unsafe.Sizeof(N(0))*8+6)/7+1)
+	for i := 0; i < len(buf)-1; i++ {
+		buf[i] = 0xff
+	}
+	buf[len(buf)-1] = 0x7f
+	return buf
+}
+
+// DummyUnsigned returns a sequence of bytes that will be recognized by ReadUnsigned as an unsigned dummy value.
+func DummyUnsigned() []byte {
+	return []byte{0x80}
+}
+
+func isDummySigned[N constraints.Signed](b []byte) bool {
+	if uintptr(len(b)) != (unsafe.Sizeof(N(0))*8+6)/7+1 {
+		return false
+	}
+	for _, i := range b[:len(b)-1] {
+		if i != 0xff {
+			return false
+		}
+	}
+	return b[len(b)-1] == 0x7f
 }
 
 // EncodeSigned marshals a signed integer.
@@ -78,9 +98,10 @@ type BufioReader interface {
 // ReadSigned reads and parses a signed integer.
 // It returns the integer, the number of bytes Discard()ed from the reader, and an error.
 // Note the error can be non-nil even if an integer was successfully read and parsed.  The real test to know if an integer was parsed is to check that the number of bytes discarded (second returned item) is >0.
+// If the sequence of bytes starts with whatever is returned by DummySigned[N](), the returned N is 0 and the error is vle.Dummy.
 func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 	nBits := uint(unsafe.Sizeof(N(0)) * 8)
-	maxBytes := int((nBits + 6) / 7)
+	maxBytes := int((nBits+6)/7) + 1
 	buf, err := r.Peek(maxBytes)
 	if len(buf) <= 0 {
 		return 0, 0, err
@@ -97,14 +118,18 @@ func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 			}
 			return 0, 0, fmt.Errorf("vle parse error: marshaled %T is longer than the expected %d bytes", n, len(buf))
 		}
+		if isDummySigned[N](buf) {
+			r.Discard(len(buf))
+			return 0, len(buf), Dummy
+		}
 		if p := uint(bits.Len(uint(b0&0x3f))) + 7*uint(l); p >= nBits {
 			return 0, 0, fmt.Errorf("vle parse error: %T unmarshals to %d bits", n, p)
 		}
 		n = (N(b0&0x3f) << (7 * l)) | n
-                n = sign * (n + max(-sign, 0))
+		n = sign * (n + max(-sign, 0))
 		l++
 	} else {
-		n, l = sign * ((N(b0) & 0x3f) + (1-sign)/2), 1
+		n, l = sign*((N(b0)&0x3f)+(1-sign)/2), 1
 	}
 	r.Discard(l)
 	if l < len(buf) {
@@ -116,12 +141,17 @@ func ReadSigned[N constraints.Signed](r BufioReader) (N, int, error) {
 // ReadUnsigned reads and parses an unsigned integer.
 // It returns the integer, the number of bytes Discard()ed from the reader, and an error.
 // Note the error can be non-nil even if an integer was successfully read and parsed.  The real test to know if an integer was parsed is to check that the number of bytes discarded (second returned item) is >0.
+// If the sequence of bytes starts with whatever is returned by DummyUnsigned(), the returned N is 0 and the error is vle.Dummy.
 func ReadUnsigned[N constraints.Unsigned](r BufioReader) (N, int, error) {
 	nBits := uint(unsafe.Sizeof(N(0)) * 8)
 	maxBytes := int((nBits + 6) / 7)
 	buf, err := r.Peek(maxBytes)
 	if len(buf) <= 0 {
 		return 0, 0, err
+	}
+	if buf[0] == 0x80 {
+		r.Discard(1)
+		return 0, 1, Dummy
 	}
 	n, l := parsePositive[N](buf)
 	if l < 0 {

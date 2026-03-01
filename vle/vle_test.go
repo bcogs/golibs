@@ -67,7 +67,7 @@ func TestEncodeAndDecodeAllUnsigned(t *testing.T) {
 	t.Parallel()
 	for i := uint(0); i < 0xffff+100; i++ {
 		b := EncodeUnsigned(i)
-		require.NotEqualf(t, byte(DUMMYUNSIGNED), b[0], "%d %d %d", i, b[0], DUMMYUNSIGNED)
+		require.NotEqualf(t, DummyUnsigned()[0], b[0], "%d %d %d", i, b[0], DummyUnsigned())
 		n, l, err := ReadUnsigned[uint](bufio.NewReader(bytes.NewReader(b)))
 		require.Equal(t, err, io.EOF, i)
 		require.Equal(t, n, i)
@@ -224,19 +224,19 @@ func testUnsignedMaxLength[U constraints.Unsigned](t *testing.T) {
 
 func TestReadIntTooManyBits(t *testing.T) {
 	const maxs16 = 0x7fff
-	require.NoError(t, oil.Third(ReadSigned[int16](bufio.NewReader(bytes.NewReader(EncodeSigned(maxs16))))))
+	require.Equal(t, io.EOF, oil.Third(ReadSigned[int16](bufio.NewReader(bytes.NewReader(EncodeSigned(maxs16)))))) // it's ok if there's no error too
 	_, l, err := ReadSigned[int16](bufio.NewReader(bytes.NewReader(EncodeSigned(int32(maxs16 + 2)))))
 	require.ErrorContains(t, err, "parse")
 	require.Equal(t, 0, l)
 
 	const mins8 = -128
-	require.NoError(t, oil.Third(ReadSigned[int8](bufio.NewReader(bytes.NewReader(EncodeSigned(mins8))))))
+	require.Equal(t, io.EOF, oil.Third(ReadSigned[int8](bufio.NewReader(bytes.NewReader(EncodeSigned(mins8)))))) // it's ok if it's EOF too
 	_, l, err = ReadSigned[int8](bufio.NewReader(bytes.NewReader(EncodeSigned(int16(mins8 - 1)))))
 	require.ErrorContains(t, err, "parse")
 	require.Equal(t, 0, l)
 
 	const maxu32 = 0xffffffff
-	require.NoError(t, oil.Third(ReadUnsigned[uint32](bufio.NewReader(bytes.NewReader(EncodeSigned(maxu32))))))
+	require.NoError(t, oil.Third(ReadUnsigned[uint32](bufio.NewReader(bytes.NewReader(EncodeSigned(maxu32)))))) // it's ok if it's EOF too
 	_, l, err = ReadUnsigned[uint32](bufio.NewReader(bytes.NewReader(EncodeUnsigned(uint64(maxu32 + 1)))))
 	require.ErrorContains(t, err, "parse")
 	require.Equal(t, 0, l)
@@ -244,21 +244,21 @@ func TestReadIntTooManyBits(t *testing.T) {
 
 func TestReadIntIOError(t *testing.T) {
 	t.Parallel()
-	testReadIntIOError[int16](t, ReadSigned[int16])
-	testReadIntIOError[uint16](t, ReadUnsigned[uint16])
+	testReadIntIOError[int16](t, 1, ReadSigned[int16])
+	testReadIntIOError[uint16](t, 0, ReadUnsigned[uint16])
 }
 
-func testReadIntIOError[N constraints.Integer](t *testing.T, read func(BufioReader) (N, int, error)) {
+func testReadIntIOError[N constraints.Integer](t *testing.T, extraBytes int, read func(BufioReader) (N, int, error)) {
 	errz, mr := fmt.Errorf("fake error"), newMockReader(t)
 	// return too short a slice
 	for _, call := range []mockReaderCall{
-		{n: 3, b: []byte{}, err: errz},
-		{n: 3, b: []byte{}, err: nil},
-		{n: 3, b: []byte{}, err: io.EOF},
-		{n: 3, b: []byte{0x81}, err: errz},
-		{n: 3, b: []byte{0x81}, err: nil},
-		{n: 3, b: []byte{0x81, 0x80}, err: errz},
-		{n: 3, b: []byte{0x81, 0x80}, err: nil},
+		{n: 3 + extraBytes, b: []byte{}, err: errz},
+		{n: 3 + extraBytes, b: []byte{}, err: nil},
+		{n: 3 + extraBytes, b: []byte{}, err: io.EOF},
+		{n: 3 + extraBytes, b: []byte{0x81}, err: errz},
+		{n: 3 + extraBytes, b: []byte{0x81}, err: nil},
+		{n: 3 + extraBytes, b: []byte{0x81, 0x80}, err: errz},
+		{n: 3 + extraBytes, b: []byte{0x81, 0x80}, err: nil},
 	} {
 		mr.calls <- call
 		_, l, err := read(mr)
@@ -267,8 +267,8 @@ func testReadIntIOError[N constraints.Integer](t *testing.T, read func(BufioRead
 	}
 	// too short a slice again, but non-0 length and EOF
 	for _, call := range []mockReaderCall{
-		{n: 3, b: []byte{0x81}, err: io.EOF},
-		{n: 3, b: []byte{0x81, 0x80}, err: io.EOF},
+		{n: 3 + extraBytes, b: []byte{0x81}, err: io.EOF},
+		{n: 3 + extraBytes, b: []byte{0x81, 0x80}, err: io.EOF},
 	} {
 		mr.calls <- call
 		_, l, err := read(mr)
@@ -277,9 +277,9 @@ func testReadIntIOError[N constraints.Integer](t *testing.T, read func(BufioRead
 	}
 	// long enough slice
 	for _, call := range []mockReaderCall{
-		{n: 3, b: []byte{0x40}, err: errz},
-		{n: 3, b: []byte{0xc1, 0x00}, err: errz},
-		{n: 3, b: []byte{0x81, 0x8f, 0x00}, err: errz},
+		{n: 3 + extraBytes, b: []byte{0x40}, err: errz},
+		{n: 3 + extraBytes, b: []byte{0xc1, 0x00}, err: errz},
+		{n: 3 + extraBytes, b: []byte{0x81, 0x8f, 0x00}, err: errz},
 	} {
 		mr.calls <- call
 		mr.calls <- mockReaderCall{n: len(call.b), err: nil}
@@ -329,4 +329,61 @@ func TestReadIntParseError(t *testing.T) {
 	require.ErrorContains(t, err, "parse")
 	require.LessOrEqual(t, l, 0)
 	require.Equal(t, []byte{0xff}, oil.First(r.Peek(1)))
+}
+
+func testDummyUnsigned[N constraints.Unsigned](t *testing.T) {
+	d := DummyUnsigned()
+	r := bufio.NewReader(bytes.NewReader(d))
+	n, l, err := ReadUnsigned[N](r)
+	require.Equal(t, Dummy, err)
+	require.Equal(t, len(d), l)
+	require.Equal(t, N(0), n)
+	require.Equal(t, io.EOF, oil.Second(r.Read([]byte{0})))
+	r = bufio.NewReader(bytes.NewReader(append(d, 0x41)))
+	n, l, err = ReadUnsigned[N](r)
+	require.Equal(t, Dummy, err)
+	require.Equal(t, len(d), l)
+	require.Equal(t, N(0), n)
+	n, l, err = ReadUnsigned[N](r)
+	require.True(t, err == io.EOF || err == nil, err)
+	require.Equal(t, N(0x41), n)
+	require.Equal(t, 1, l)
+}
+
+func TestDummyUnsigned(t *testing.T) {
+	testDummyUnsigned[uint](t)
+	testDummyUnsigned[byte](t)
+	testDummyUnsigned[uint8](t)
+	testDummyUnsigned[uint16](t)
+	testDummyUnsigned[uint32](t)
+	testDummyUnsigned[uint64](t)
+}
+
+func testDummySigned[N constraints.Signed](t *testing.T) {
+	d := DummySigned[N]()
+	require.True(t, isDummySigned[N](d))
+	r := bufio.NewReader(bytes.NewReader(d))
+	n, l, err := ReadSigned[N](r)
+	require.Equal(t, Dummy, err)
+	require.Equal(t, len(d), l)
+	require.Equal(t, N(0), n)
+	require.Equal(t, io.EOF, oil.Second(r.Read([]byte{0}))) // XXX
+	r = bufio.NewReader(bytes.NewReader(append(d, 0x35)))
+	n, l, err = ReadSigned[N](r)
+	require.Equal(t, Dummy, err)
+	require.Equal(t, len(d), l)
+	require.Equal(t, N(0), n)
+	n, l, err = ReadSigned[N](r)
+	require.True(t, err == io.EOF || err == nil, err)
+	require.Equal(t, N(0x35), n)
+	require.Equal(t, 1, l)
+}
+
+func TestDummySigned(t *testing.T) {
+	testDummySigned[int](t)
+	testDummySigned[rune](t)
+	testDummySigned[int8](t)
+	testDummySigned[int16](t)
+	testDummySigned[int32](t)
+	testDummySigned[int64](t)
 }
