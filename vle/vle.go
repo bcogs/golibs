@@ -12,9 +12,7 @@ import (
 )
 
 const (
-	// range of dummy values that can't possibly be the first byte of something returned by Encode*
-	DUMMYFIRST = 197
-	DUMMYLAST  = 0xff
+	DUMMYUNSIGNED = 0x80 // can't possibly the first byte of EncodeUnsigned result
 )
 
 func encodePositiveExceptFirstByte[N constraints.Integer](n, nostop N) ([]byte, byte) {
