@@ -35,20 +35,10 @@ func TestEncodeAndDecodeAllUnsigned(t *testing.T) {
 	for i := uint(0); i < 0x234; i++ {
 		b := EncodeUnsigned(i)
 		require.Truef(t, b[0] < DUMMYFIRST || b[0] > DUMMYLAST, "%d %d %d", b, DUMMYFIRST, DUMMYLAST)
-		n, _, err := ReadUnsigned[uint](bufio.NewReader(bytes.NewReader(b)))
+		n, l, err := ReadUnsigned[uint](bufio.NewReader(bytes.NewReader(b)))
 		require.Equal(t, err, io.EOF, i)
 		require.Equal(t, n, i)
-	}
-}
-
-func TestEncodeAndDecodeAllSigned(t *testing.T) {
-	t.Parallel()
-	for i := -0x234; i < 0x234; i++ {
-		b := EncodeSigned(i)
-		require.Truef(t, b[0] < DUMMYFIRST || b[0] > DUMMYLAST, "%d %d %d", b, DUMMYFIRST, DUMMYLAST)
-		n, _, err := ReadSigned[int](bufio.NewReader(bytes.NewReader(b)))
-		require.Equal(t, err, io.EOF, i)
-		require.Equal(t, n, i)
+		require.Equal(t, len(b), l, i)
 	}
 }
 
@@ -81,6 +71,18 @@ func TestEncodeSigned(t *testing.T) {
 			b = EncodeSigned(n)
 			require.Equalf(t, tc.expected, b, "0x#%x -> %x, expected %x", n, b, tc.expected)
 		}
+	}
+}
+
+func TestEncodeAndDecodeAllSigned(t *testing.T) {
+	t.Parallel()
+	for i := -0x234; i < 0x234; i++ {
+		b := EncodeSigned(i)
+		require.Truef(t, b[0] < DUMMYFIRST || b[0] > DUMMYLAST, "%d %d %d", b, DUMMYFIRST, DUMMYLAST)
+		n, l, err := ReadSigned[int](bufio.NewReader(bytes.NewReader(b)))
+		require.Equal(t, err, io.EOF, i)
+		require.Equal(t, n, i)
+		require.Equal(t, len(b), l, i)
 	}
 }
 
