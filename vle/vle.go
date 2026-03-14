@@ -1,11 +1,16 @@
 // Package vle provides variable length encoding (un-)marshaling.
+//
 // Format:
-//   - most significant bit of each byte is 0 if it's the last byte
-//   - for signed numbers:
-//   - the second most significant bit of the first byte is 1 if it's negative
-//   - the rest is the int itself if it's >=0 or abs(the int) - 1 otherwise
-//   - the 7 least significant bits of the last byte are the 7 least significant bits of the encoded value
-//   - then walking backwards, the 7 least significant bits of each byte are the next 7 bits of the encoded value
+//   - The most significant bit of each byte is a continuation flag:
+//     1 means more bytes follow, 0 means this is the last byte.
+//   - The remaining 7 bits of each byte carry payload, big-endian:
+//     the first byte holds the most significant payload bits,
+//     the last byte holds the least significant.
+//   - For unsigned numbers, all payload bits represent the value directly.
+//   - For signed numbers, the second most significant bit of the first byte
+//     is a sign flag (1 = negative), leaving 6 payload bits in the first byte.
+//     The encoded value is the integer itself when non-negative,
+//     or abs(integer) - 1 when negative.
 package vle
 
 import (
