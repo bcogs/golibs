@@ -223,6 +223,15 @@ func MapFromSlice[K comparable, V any](slice []K, value V) map[K]V {
 	return m
 }
 
+// ReverseMap swaps the keys and values of a map. If the values aren't unique, the result is unspecified for those entries.
+func ReverseMap[K comparable, V comparable](m map[K]V) map[V]K {
+	result := make(map[V]K, len(m))
+	for k, v := range m {
+		result[v] = k
+	}
+	return result
+}
+
 // FanIn writes anything it reads from a number of channels, the producers, to a single channel, the consumer.
 // If all the producers get closed, it closes the consumer and returns.
 // Whenever there's a write to a producer, the consumer must be read, otherwise, FanIn could get stuck.

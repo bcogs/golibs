@@ -152,6 +152,13 @@ func TestMapFromSlice(t *testing.T) {
 	assert.Equal(t, map[int]float64{1: 5, 3: 5}, oil.MapFromSlice([]int{1, 3}, 5.))
 }
 
+func TestReverseMap(t *testing.T) {
+	assert.Equal(t, map[int]string{1: "a", 2: "b"}, oil.ReverseMap(map[string]int{"a": 1, "b": 2}))
+	m := oil.ReverseMap(map[int]string{2: "foo", 3: "foo"})
+	assert.Equal(t, 1, len(m))
+	assert.Equal(t, 1, m["foo"] / 2)
+}
+
 func TestFanIn(t *testing.T) {
 	const N = 50
 	consumer := make(chan int, N)
