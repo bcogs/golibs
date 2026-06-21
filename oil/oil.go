@@ -223,7 +223,25 @@ func MapFromSlice[K comparable, V any](slice []K, value V) map[K]V {
 	return m
 }
 
-// ReverseMap swaps the keys and values of a map. If the values aren't unique, the result is unspecified for those entries.
+// MapKeys returns the keys of a map as a slice.
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	result := make([]K, 0, len(m))
+	for k, _ := range m {
+		result = append(result, k)
+	}
+	return result
+}
+
+// MapValues returns the values of a map as a slice. Values that appear multiple times in the map appear as many times in the returned slice.
+func MapValues[K comparable, V any](m map[K]V) []V {
+	result := make([]V, 0, len(m))
+	for _, v := range m {
+		result = append(result, v)
+	}
+	return result
+}
+
+// ReverseMap swaps the keys and values of a map. If the values aren't unique, it's unspecified which of them is used in the result.
 func ReverseMap[K comparable, V comparable](m map[K]V) map[V]K {
 	result := make(map[V]K, len(m))
 	for k, v := range m {
