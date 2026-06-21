@@ -9,6 +9,7 @@ import (
 )
 
 func TestAbs(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 3, oil.Abs(-3))
 	assert.Equal(t, 3, oil.Abs(3))
 	assert.Equal(t, 3.0, oil.Abs(-3.0))
@@ -16,23 +17,27 @@ func TestAbs(t *testing.T) {
 }
 
 func TestIf(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 0, oil.If(false, 1, 0))
 	assert.Equal(t, 1, oil.If(true, 1, 0))
 }
 
 func TestMax(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, int64(-4), oil.Max(int64(-8), int64(-4)))
 	assert.Equal(t, 3.2, oil.Max(3.2, 1.))
 	assert.Equal(t, "foo", oil.Max("bar", "foo"))
 }
 
 func TestMin(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, uint(3), oil.Min(uint(3), uint(5)))
 	assert.Equal(t, 3.2, oil.Min(8., 3.2))
 	assert.Equal(t, "bar", oil.Min("bar", "foo"))
 }
 
 func TestAtoi(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		a                  string
 		min, max, expected int
@@ -55,6 +60,7 @@ func TestAtoi(t *testing.T) {
 }
 
 func TestAtou(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		a        string
 		min, max uint
@@ -77,38 +83,46 @@ func TestAtou(t *testing.T) {
 }
 
 func TestFirst(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 1, oil.First(1))
 	assert.Equal(t, "foo", oil.First("foo", "bar"))
 }
 
 func TestSecond(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 2, oil.Second("foo", 2))
 	assert.Equal(t, "bar", oil.Second(1, "bar", "baz"))
 }
 
 func TestThird(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 3, oil.Third("foo", "bar", 3))
 	assert.Equal(t, "bar", oil.Third(1, 2, "bar"))
 }
 
 func TestFourth(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, 4, oil.Fourth("foo", "bar", "baz", 4))
 	assert.Equal(t, "bar", oil.Fourth(1, 2, 3, "bar"))
 }
 
 func TestPair(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, oil.Pair[int, string]{First: 1, Second: "a"}, oil.NewPair(1, "a"))
 }
 
 func TestNewTriplet(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, oil.Triplet[int, string, float64]{First: 1, Second: "a", Third: 1.}, oil.NewTriplet(1, "a", 1.))
 }
 
 func TestNewQuadruplet(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, oil.Quadruplet[int, string, float64, uint]{First: 1, Second: "a", Third: 1., Fourth: uint(2)}, oil.NewQuadruplet(1, "a", 1., uint(2)))
 }
 
 func TestOptional(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, oil.Optional[int]{Val: 1, IsSet: true}, oil.NewOptional(1, true))
 	assert.Equal(t, oil.Optional[int]{Val: 0, IsSet: false}, oil.NewOptional(0, false))
 	assert.Equal(t, 1, oil.NewOptional(1, true).Get(0))
@@ -122,6 +136,7 @@ func TestOptional(t *testing.T) {
 }
 
 func TestMapDefaults(t *testing.T) {
+	t.Parallel()
 	m := map[int]int{1: 2}
 	assert.Equal(t, 5, oil.MapGet(m, 8, 5))
 	assert.Equal(t, 2, oil.MapGet(m, 1, 5))
@@ -132,6 +147,7 @@ func TestMapDefaults(t *testing.T) {
 }
 
 func TestMapGetOrNew(t *testing.T) {
+	t.Parallel()
 	m := map[int]int{1: 2}
 	assert.Equal(t, 2, oil.MapGetOrNew(m, 1, func() int { return 3 }))
 	assert.Equal(t, 3, oil.MapGetOrNew(m, 4, func() int { return 3 }))
@@ -139,6 +155,7 @@ func TestMapGetOrNew(t *testing.T) {
 }
 
 func TestMapGetOrNewRef(t *testing.T) {
+	t.Parallel()
 	two := 2
 	m := map[int]*int{1: &two}
 	assert.Equal(t, 2, *oil.MapGetOrNewRef(m, 1))
@@ -149,15 +166,18 @@ func TestMapGetOrNewRef(t *testing.T) {
 }
 
 func TestMapFromSlice(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, map[int]float64{1: 5, 3: 5}, oil.MapFromSlice([]int{1, 3}, 5.))
 }
 
 func TestMapKeys(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, []float64{}, oil.MapKeys(map[float64]struct{}{}))
 	assert.Equal(t, []int{1, 2, 3}, oil.MapKeys(map[int]string{1: "a", 2: "b", 3: "c"}))
 }
 
 func TestMapValues(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, []int{}, oil.MapValues(map[float64]int{}))
 	v := oil.MapValues(map[string]int{"a": 2, "b": 3, "c": 3})
 	assert.Equal(t, 3, len(v))
@@ -165,6 +185,7 @@ func TestMapValues(t *testing.T) {
 }
 
 func TestReverseMap(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, map[bool]int{}, oil.ReverseMap(map[int]bool{}))
 	assert.Equal(t, map[int]string{1: "a", 2: "b"}, oil.ReverseMap(map[string]int{"a": 1, "b": 2}))
 	m := oil.ReverseMap(map[int]string{2: "foo", 3: "foo"})
@@ -173,6 +194,7 @@ func TestReverseMap(t *testing.T) {
 }
 
 func TestFanIn(t *testing.T) {
+	t.Parallel()
 	const N = 50
 	consumer := make(chan int, N)
 	producer1, producer2 := make(chan int, 1), make(chan int, 1)
@@ -197,6 +219,7 @@ func TestFanIn(t *testing.T) {
 }
 
 func TestFanOut(t *testing.T) {
+	t.Parallel()
 	producer := make(chan int, 1)
 	consumer1, consumer2 := make(chan int, 1), make(chan int, 1)
 	go oil.FanOut(producer, consumer1, consumer2)
