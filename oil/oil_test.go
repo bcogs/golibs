@@ -152,11 +152,24 @@ func TestMapFromSlice(t *testing.T) {
 	assert.Equal(t, map[int]float64{1: 5, 3: 5}, oil.MapFromSlice([]int{1, 3}, 5.))
 }
 
+func TestMapKeys(t *testing.T) {
+	assert.Equal(t, []float64{}, oil.MapKeys(map[float64]struct{}{}))
+	assert.Equal(t, []int{1, 2, 3}, oil.MapKeys(map[int]string{1: "a", 2: "b", 3: "c"}))
+}
+
+func TestMapValues(t *testing.T) {
+	assert.Equal(t, []int{}, oil.MapValues(map[float64]int{}))
+	v := oil.MapValues(map[string]int{"a": 2, "b": 3, "c": 3})
+	assert.Equal(t, 3, len(v))
+	assert.Equal(t, 2*3*3, v[0]*v[1]*v[2])
+}
+
 func TestReverseMap(t *testing.T) {
+	assert.Equal(t, map[bool]int{}, oil.ReverseMap(map[int]bool{}))
 	assert.Equal(t, map[int]string{1: "a", 2: "b"}, oil.ReverseMap(map[string]int{"a": 1, "b": 2}))
 	m := oil.ReverseMap(map[int]string{2: "foo", 3: "foo"})
 	assert.Equal(t, 1, len(m))
-	assert.Equal(t, 1, m["foo"] / 2)
+	assert.Equal(t, 1, m["foo"]/2)
 }
 
 func TestFanIn(t *testing.T) {
