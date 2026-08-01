@@ -10,6 +10,14 @@
 //	w := nabu.NewWriter(output, ne.Encoding) // encodes UTF-8 to iso-8859-1
 //	defer w.Close()
 //
+// Whatever the encoding, what nabu produces is well formed: input that isn't
+// valid in the encoding it's converted from is replaced with U+FFFD rather than
+// let through.  utf-8 is no exception - converting it is a real conversion, not
+// a pass through - so no encoding is more trusted than the others.
+//
+// Reading never fails on malformed input, as UTF-8 can always represent U+FFFD.
+// Writing usually does, as most encodings have no character for it.
+//
 // It's named after the Mesopotamian god of scribes and cuneiform.
 package nabu
 
@@ -21,8 +29,8 @@ import (
 	"golang.org/x/text/transform"
 )
 
-// UTF8 is the utf-8 encoding, which NewReader and NewWriter special case, as
-// converting from UTF-8 to itself is a no-op.
+// UTF8 is the utf-8 encoding.  Converting from UTF-8 to itself isn't a no-op:
+// it sanitizes malformed input like any other encoding does.
 var UTF8 = func() NamedEncoding {
 	ne, err := NewNamedEncoding("utf-8")
 	if err != nil {
@@ -56,32 +64,29 @@ func (ne NamedEncoding) String() string {
 
 // NewReader returns a Reader that reads r and decodes it from e to UTF-8.
 //
+// Bytes that don't form a valid character in e are replaced with U+FFFD, so
+// what's read is always well formed UTF-8, and reading never fails on malformed
+// input.
+//
 // Unlike NewWriter, it needs no closing: a decoder holds back an incomplete
 // multibyte sequence until the bytes completing it are read, and there's
 // nothing to flush once r is exhausted.
 func NewReader(r io.Reader, e encoding.Encoding) io.Reader {
-	if e != UTF8.Encoding {
-		return e.NewDecoder().Reader(r)
-	}
-	return r
+	return e.NewDecoder().Reader(r)
 }
 
 // NewWriter returns a WriteCloser that encodes to e what's written to it, and
 // writes the result to output.
+//
+// What's written to it must be UTF-8.  Malformed bytes are replaced with
+// U+FFFD, which most encodings have no character for, so writing them usually
+// fails - as does writing a rune e can't represent.  Only utf-8 never fails,
+// every rune being representable in it.
 //
 // Its Close must be called once everything has been written, as some bytes are
 // only emitted at that point - the terminator of a stateful encoding, or the
 // error of a trailing incomplete rune.  Close never closes output, which needn't
 // even be closeable: it only writes the last bytes to it.
 func NewWriter(output io.Writer, e encoding.Encoding) io.WriteCloser {
-	if e != UTF8.Encoding {
-		return transform.NewWriter(output, e.NewEncoder())
-	}
-	return nopCloser{output}
+	return transform.NewWriter(output, e.NewEncoder())
 }
-
-// nopCloser adds a no-op Close to a Writer, so that NewWriter returns something
-// closeable whatever the encoding, and callers needn't special case utf-8.
-type nopCloser struct{ io.Writer }
-
-func (nopCloser) Close() error { return nil }

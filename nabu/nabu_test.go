@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/bcogs/golibs/iotest"
 	"github.com/stretchr/testify/require"
@@ -303,20 +304,101 @@ type closeCounter struct {
 
 func (cc *closeCounter) Close() error { cc.closes++; return nil }
 
-// TestUTF8NoWrapping checks that NewReader and NewWriter don't wrap what
-// they're given in a useless transformer when the encoding is utf-8.
-func TestUTF8NoWrapping(t *testing.T) {
+// TestUTF8Passthrough checks that utf-8 goes through a Reader and a Writer
+// unchanged, and that closing the Writer doesn't close the output.
+func TestUTF8Passthrough(t *testing.T) {
 	t.Parallel()
+	const str = "é日"
 	var buf bytes.Buffer
-	require.Same(t, &buf, NewReader(&buf, UTF8.Encoding))
 	cc := &closeCounter{Writer: &buf}
 	w := NewWriter(cc, UTF8.Encoding)
-	require.Same(t, cc, w.(nopCloser).Writer)
-	_, err := w.Write([]byte("é日"))
+	_, err := w.Write([]byte(str))
 	require.NoError(t, err)
 	require.NoError(t, w.Close())
-	require.Equal(t, "é日", buf.String())
+	require.Equal(t, str, buf.String())
 	require.Zero(t, cc.closes) // Close only flushes, it doesn't close the output
+	read, err := io.ReadAll(NewReader(&buf, UTF8.Encoding))
+	require.NoError(t, err)
+	require.Equal(t, str, string(read))
+}
+
+// malformedReadCases are inputs that aren't valid in the encoding they're read
+// as.  Each needs an encoding with genuinely invalid byte sequences, which rules
+// out single byte charsets: in iso-8859-1, every byte but a handful is a valid
+// character, so a test reading one would replace nothing and prove nothing.
+var malformedReadCases = []struct{ encoding, input string }{
+	{"utf-8", "a\xffb"},         // \xff can't appear in UTF-8 at all
+	{"shift_jis", "a\x81\x20b"}, // \x81 is a lead byte, \x20 an invalid trail
+	{"utf-16be", "a\x00b"},      // odd length, so the last code unit is truncated
+}
+
+// TestMalformedInput checks that malformed input is sanitized rather than let
+// through, for utf-8 just like for any other encoding.
+func TestMalformedInput(t *testing.T) {
+	t.Parallel()
+	// reading bytes that aren't valid in the source encoding yields U+FFFD
+	for _, tc := range malformedReadCases {
+		t.Run("read/"+tc.encoding, func(t *testing.T) {
+			ne, err := NewNamedEncoding(tc.encoding)
+			require.NoError(t, err)
+			read, err := io.ReadAll(NewReader(strings.NewReader(tc.input), ne.Encoding))
+			require.NoError(t, err)
+			require.True(t, utf8.Valid(read), "%q isn't valid UTF-8", read)
+			// the point of the test: the bad bytes were replaced, not let through
+			require.Contains(t, string(read), "�")
+		})
+	}
+	// writing malformed utf-8 doesn't let it through to the output
+	for _, ne := range []NamedEncoding{UTF8, nonUTF8(t)} {
+		t.Run("write/"+ne.Name, func(t *testing.T) {
+			var buf bytes.Buffer
+			w := NewWriter(&buf, ne.Encoding)
+			_, err1 := w.Write([]byte("a\xffb"))
+			err2 := w.Close()
+			require.NotContains(t, buf.String(), "\xff")
+			if ne.Encoding == UTF8.Encoding {
+				// utf-8 can encode U+FFFD, so it replaces rather than fails
+				require.NoError(t, err1)
+				require.NoError(t, err2)
+				require.Equal(t, "a�b", buf.String())
+			} else {
+				// other encodings have no U+FFFD, so they bail out
+				require.Error(t, errors.Join(err1, err2))
+			}
+		})
+	}
+	// writing a rune the encoding has no character for fails, except in utf-8,
+	// which can represent every rune
+	for _, ne := range []NamedEncoding{UTF8, nonUTF8(t)} {
+		t.Run("unmappable/"+ne.Name, func(t *testing.T) {
+			var buf bytes.Buffer
+			w := NewWriter(&buf, ne.Encoding)
+			_, err1 := w.Write([]byte("a日b"))
+			err2 := w.Close()
+			if ne.Encoding == UTF8.Encoding {
+				require.NoError(t, errors.Join(err1, err2))
+				require.Equal(t, "a日b", buf.String())
+			} else {
+				require.Error(t, errors.Join(err1, err2))
+			}
+		})
+	}
+	// a trailing incomplete rune is reported by Close, whatever the encoding
+	for _, ne := range []NamedEncoding{UTF8, nonUTF8(t)} {
+		t.Run("truncated/"+ne.Name, func(t *testing.T) {
+			var buf bytes.Buffer
+			w := NewWriter(&buf, ne.Encoding)
+			_, err := w.Write([]byte("ab\xc3"))
+			require.NoError(t, err)
+			require.NotContains(t, buf.String(), "\xc3")
+			if ne.Encoding == UTF8.Encoding {
+				require.NoError(t, w.Close())
+				require.Equal(t, "ab�", buf.String())
+			} else {
+				require.Error(t, w.Close())
+			}
+		})
+	}
 }
 
 // TestWriterDoesntCloseOutput checks that closing the WriteCloser NewWriter
