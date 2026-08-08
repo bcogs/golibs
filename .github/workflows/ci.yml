@@ -67,3 +67,32 @@ jobs:
       - name: Run go test
         run: go test -v ./...
         working-directory: ${{ matrix.dir }}
+
+  # The workspace (go.work) makes every module resolve its siblings from the
+  # local checkout, which hides stale require lines.  This job builds and tests
+  # each module the way an external consumer resolves it - workspace disabled,
+  # dependencies fetched from the proxy - so a module that can't be go get-ed on
+  # its own fails here rather than in a stranger's build.
+  standalone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: true
+
+      - name: Build and test every module without the workspace
+        env:
+          GOWORK: "off"
+        run: |
+          rc=0
+          for mod in $(find . -name go.mod -mindepth 2 -maxdepth 2 | xargs -n1 dirname | sort); do
+            echo "::group::$mod"
+            (cd "$mod" && go build ./... && go test ./...) || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc

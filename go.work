@@ -1,0 +1,29 @@
+// Workspace for local development: inside this checkout every module resolves
+// its siblings from the working tree rather than from the module proxy, so a
+// change to e.g. nabu is immediately visible to noty with no go get dance.
+//
+// The go.work file is local-only - consumers of these modules never see it, and
+// resolve each module through the pseudo-versions in its own go.mod.  The
+// "standalone" CI job builds and tests every module with GOWORK=off to make
+// sure those stay correct.
+//
+// Do not run "go work sync".  It rewrites every module's go.mod to the
+// workspace-wide maximum dependency version and drops go.sum entries the
+// modules need when built on their own.  Nothing else needs it: build, test,
+// vet and mod tidy all leave the modules' go.mod and go.sum alone.
+
+go 1.25.0
+
+use (
+	./bunch
+	./eztime
+	./htt9
+	./iotest
+	./nabu
+	./noty
+	./nummap
+	./oil
+	./singleton
+	./tailer
+	./vle
+)
